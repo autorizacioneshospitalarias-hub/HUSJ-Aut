@@ -1,0 +1,5 @@
+{
+  "name": "Autorizaciones Hospitalarias HUSJP",
+  "description": "Sistema de verificación y gestión de cirugías para el Hospital San José.",
+  "requestFramePermissions": []
+}

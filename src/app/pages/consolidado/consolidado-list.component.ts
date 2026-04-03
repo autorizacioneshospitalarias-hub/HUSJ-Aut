@@ -1,0 +1,2709 @@
+import { Component, input, signal, computed, inject, ViewChild, ElementRef, ChangeDetectionStrategy } from '@angular/core';
+import { ConsolidadoRecord, ConsolidadoService, HistorialCambio, CorteEstancia } from '../../services/consolidado.service';
+import { EpsSinConvenioService } from '../../services/eps-sin-convenio.service';
+import { EpsCorteAdministrativoService } from '../../services/eps-corte-administrativo.service';
+import { MatIconModule } from '@angular/material/icon';
+import { NgClass, DatePipe } from '@angular/common';
+import { SupabaseService } from '../../services/supabase.service';
+
+interface TramiteHistory {
+  fecha: string;
+  tipo: string;
+  nota: string;
+  isDeleted?: boolean;
+  deletedBy?: string;
+  deletedAt?: string;
+}
+
+interface SoporteEntry {
+  id: string;
+  fecha_solicitud: string;
+  periodo_desde?: string;
+  periodo_hasta?: string;
+  autorizacion_recibida: boolean;
+  soporte_pdf_presente?: boolean;
+  fecha_registro_soporte?: string;
+}
+
+export interface MappedConsolidadoRecord extends ConsolidadoRecord {
+  _hasCortes: boolean;
+  _diasCorte: number;
+  _derechosEstado: string;
+  _visibleObs: string;
+  _latestTramite: string;
+  _isSinConvenio: boolean;
+  _isCorteAdmin: boolean;
+  _hasTramiteHistory: boolean;
+  _latestSoporte: SoporteEntry | null;
+}
+
+@Component({
+  selector: 'app-consolidado-list',
+  standalone: true,
+  imports: [MatIconModule, NgClass, DatePipe],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <div class="h-full p-2 animate-in fade-in duration-300 bg-slate-50 focus:outline-none" role="button" tabindex="0">
+      <div class="border border-slate-200 rounded-lg shadow-sm overflow-hidden h-full flex flex-col relative"
+           [ngClass]="[
+             view() === 'validacion_derechos' ? 'max-w-[1000px] mx-auto shadow-md' : '',
+             hasActiveFilters() ? 'bg-slate-100/50' : 'bg-white'
+           ]">
+        <div class="overflow-auto flex-1">
+          <table class="w-full text-sm text-left whitespace-nowrap">
+            <thead class="outlook-table-header text-xs uppercase sticky top-0 z-10">
+              <tr>
+                <th class="px-4 py-3 font-semibold w-10">#</th>
+                
+                <!-- Ubicación -->
+                <th class="px-4 py-3 font-semibold min-w-[200px]">
+                  Ubicación
+                </th>
+
+                <!-- Paciente -->
+                <th class="px-4 py-3 font-semibold min-w-[200px]">
+                  Paciente
+                </th>
+
+                <!-- Admisión -->
+                <th class="px-4 py-3 font-semibold min-w-[150px]">
+                  Admisión
+                </th>
+
+                <!-- Entidad -->
+                <th class="px-4 py-3 font-semibold min-w-[250px] max-w-[400px]">
+                  Entidad
+                </th>
+
+                <!-- Gestión Estancia -->
+                @if (view() === 'general' || view() === 'estancias_nuevas' || view() === 'seguimiento') {
+                  <th class="px-4 py-3 font-semibold min-w-[180px]">
+                    Gestión Estancia
+                  </th>
+                }
+
+                <!-- Novedades & Observaciones -->
+                @if (view() === 'general' || view() === 'estancias_nuevas' || view() === 'seguimiento') {
+                  <th class="px-4 py-3 font-semibold min-w-[250px]">
+                    Novedades
+                  </th>
+                }
+
+                <!-- En Trámite -->
+                @if (view() === 'general' || view() === 'estancias_nuevas' || view() === 'seguimiento') {
+                  <th class="px-4 py-3 font-semibold min-w-[200px]">
+                    En Trámite
+                  </th>
+                }
+                
+                <!-- Soportes -->
+                @if (view() === 'general' || view() === 'estancias_nuevas' || view() === 'seguimiento') {
+                  <th class="px-4 py-3 font-semibold w-24">Soportes</th>
+                }
+
+                @if (view() === 'pgp_aic') {
+                  <th class="px-4 py-3 font-semibold min-w-[150px]">Confirmación PGP</th>
+                  <th class="px-4 py-3 font-semibold min-w-[200px]">Justificación</th>
+                }
+              </tr>
+            </thead>
+            <tbody class="text-slate-600 align-top bg-slate-50/50">
+              @for (r of filteredRegistros(); track r.id; let i = $index) {
+                <tr class="border-b-4 border-slate-100 cursor-default group focus:outline-none"
+                    [ngClass]="{
+                      'bg-red-200 transition-none': consolidadoService.registrosActualizados().has(r.id!.toString()),
+                      'bg-white transition-colors duration-[60000ms] hover:bg-slate-50': !consolidadoService.registrosActualizados().has(r.id!.toString())
+                    }">
+                  <!-- Enumeración -->
+                  <td class="px-4 py-4 text-center">
+                    <span class="text-[10px] font-bold text-slate-400 bg-slate-100 w-6 h-6 flex items-center justify-center rounded-full border border-slate-200 group-hover:bg-slate-900 group-hover:text-white transition-colors">
+                      {{ i + 1 }}
+                    </span>
+                  </td>
+                  
+                  <!-- Ubicación -->
+                  <td class="px-4 py-4 text-[11px] whitespace-normal">
+                    <div class="flex items-start justify-between gap-2 group/ubicacion">
+                      <div>
+                        <div class="font-bold text-slate-800 mb-0.5" [class.bg-missing-value]="!r['area']">{{ r['area'] || 'N/A' }}</div>
+                        <div class="text-[10px] text-slate-500 font-mono bg-slate-100 inline-block px-1.5 py-0.5 rounded border border-slate-200" [class.bg-missing-value]="!r['cama']">Cama: {{ r['cama'] || 'N/A' }}</div>
+                      </div>
+                      <button (click)="openGiroCamaModal(r)" 
+                              class="transition-opacity p-1 rounded hover:bg-slate-200 shrink-0"
+                              [ngClass]="r['giro_cama'] ? 'text-blue-300 hover:text-blue-600 opacity-100' : 'text-slate-400 hover:text-slate-800 opacity-0 group-hover/ubicacion:opacity-100'"
+                              title="Ver Giro Cama">
+                        <mat-icon class="text-[16px] w-4 h-4">history</mat-icon>
+                      </button>
+                    </div>
+                  </td>
+
+                  <!-- Paciente -->
+                  <td class="px-4 py-4 text-[11px] whitespace-normal">
+                    <div class="flex items-start justify-between gap-2 group/paciente">
+                      <div>
+                        <div class="font-bold text-slate-900 mb-1" [class.bg-missing-value]="!r['nombre']">{{ r['nombre'] || 'N/A' }}</div>
+                        <div class="text-[10px] text-slate-500 font-mono leading-tight flex flex-col gap-0.5">
+                          <div class="hover:text-emerald-600 transition-colors cursor-pointer" 
+                               (click)="copyToClipboard(getStringValue(r['hc']), $event)"
+                               (keydown.enter)="copyToClipboard(getStringValue(r['hc']), $event)"
+                               tabindex="0" [class.bg-missing-value]="!r['hc']">HC: {{ r['hc'] || 'N/A' }}</div>
+                          <div class="hover:text-emerald-600 transition-colors cursor-pointer"
+                               (click)="copyToClipboard(getStringValue(r['ingreso']), $event)"
+                               (keydown.enter)="copyToClipboard(getStringValue(r['ingreso']), $event)"
+                               tabindex="0" [class.bg-missing-value]="!r['ingreso']">Ing: {{ r['ingreso'] || 'N/A' }}</div>
+                        </div>
+                      </div>
+                      <div class="flex flex-col gap-1">
+                        <button (click)="openDetalleModal(r)" class="text-slate-400 hover:text-slate-800 opacity-0 group-hover/paciente:opacity-100 transition-opacity p-1 rounded hover:bg-slate-200 shrink-0" title="Ver detalle completo">
+                          <mat-icon class="text-[16px] w-4 h-4">visibility</mat-icon>
+                        </button>
+                        <button (click)="openDerechosModal(r)" 
+                                [class]="r['validacion_derechos'] ? 'text-emerald-600 hover:text-emerald-700 p-1 rounded hover:bg-emerald-50 shrink-0' : 'text-slate-400 hover:text-emerald-600 opacity-0 group-hover/paciente:opacity-100 transition-opacity p-1 rounded hover:bg-emerald-50 shrink-0'" 
+                                [title]="r['validacion_derechos'] ? r._derechosEstado + ' por: ' + r['validacion_derechos'] + ' (' + (r['validacion_derechos_fecha'] | date:'dd/MM/yyyy hh:mm:ss a') + ')' : 'Validar derechos'">
+                          <mat-icon class="text-[16px] w-4 h-4">fact_check</mat-icon>
+                        </button>
+                      </div>
+                    </div>
+                  </td>
+
+                  <!-- Admisión -->
+                  <td class="px-4 py-4 text-[11px] whitespace-normal">
+                    <div class="grid grid-cols-[45px_1fr] gap-1 text-[10px] text-slate-500 mb-0.5">
+                      <span>Ingreso:</span>
+                      <span class="font-mono">{{ r['fecha_ingreso'] || 'N/A' }}</span>
+                    </div>
+                    <div class="grid grid-cols-[45px_1fr] gap-1 text-[10px] text-slate-500 mb-1">
+                      <span>Hosp:</span>
+                      <span class="font-mono">{{ r['fecha_hosp'] || 'N/A' }}</span>
+                    </div>
+                    <div class="flex gap-2 mt-1.5">
+                      <span class="text-[9px] font-bold bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-200" title="Días Ingreso">D.I: {{ r['dias_ingr'] || 0 }}</span>
+                      <span class="text-[9px] font-bold px-1.5 py-0.5 rounded border" 
+                            [class.bg-purple-50]="toNumber(r['dias_hosp']) <= 30" [class.text-purple-700]="toNumber(r['dias_hosp']) <= 30" [class.border-purple-200]="toNumber(r['dias_hosp']) <= 30"
+                            [class.bg-red-50]="toNumber(r['dias_hosp']) > 30" [class.text-red-700]="toNumber(r['dias_hosp']) > 30" [class.border-red-200]="toNumber(r['dias_hosp']) > 30"
+                            title="Días Hospitalización">
+                        <span [class.text-red-600]="toNumber(r['dias_hosp']) > 30">D.H:</span> {{ r['dias_hosp'] || 0 }}
+                      </span>
+                    </div>
+                  </td>
+
+                  <!-- Entidad -->
+                  <td class="px-4 py-4 text-[11px] whitespace-normal max-w-[400px]">
+                    <div class="flex items-start justify-between gap-2 group/entidad">
+                      <div>
+                        <div class="font-semibold text-slate-800 mb-0.5 flex items-center flex-wrap gap-1">
+                          {{ r['entidad'] || 'N/A' }}
+                          @if (r._isSinConvenio) {
+                            <span class="text-[9px] font-bold bg-slate-700 text-white px-1.5 py-0.5 rounded uppercase whitespace-nowrap">SIN CONVENIO</span>
+                          }
+                        </div>
+                        <div class="text-[10px] text-slate-500 mb-0.5">Contrato: {{ r['contrato'] || 'N/A' }}</div>
+                        <div class="text-[9px] text-slate-400 uppercase">{{ r['municipio'] || 'N/A' }}</div>
+                        @if (r['eps_soat']) {
+                          <div class="text-[10px] text-emerald-600 font-medium mt-0.5">EPS: {{ r['eps_soat'] }}</div>
+                        }
+                        
+                        @if (r._isCorteAdmin) {
+                          @if (r._diasCorte >= 30) {
+                            <div class="mt-1 inline-flex items-center gap-1 bg-red-50 text-red-700 border border-red-200 px-1.5 py-0.5 rounded text-[9px] font-bold" title="Han pasado 30 días o más desde el ingreso o último corte">
+                              <mat-icon class="text-[12px] w-3 h-3">warning</mat-icon>
+                              CORTE VENCIDO ({{ r._diasCorte }}d)
+                            </div>
+                          } @else if (r._diasCorte >= 25) {
+                            <div class="mt-1 inline-flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded text-[9px] font-bold" title="Próximo a vencer corte de 30 días">
+                              <mat-icon class="text-[12px] w-3 h-3">schedule</mat-icon>
+                              CORTE PRÓXIMO ({{ r._diasCorte }}d)
+                            </div>
+                          }
+                        }
+                      </div>
+                      <div class="flex flex-col items-center gap-1 shrink-0">
+                        <button (click)="openEntidadModal(r)" class="text-slate-400 hover:text-slate-800 opacity-0 group-hover/entidad:opacity-100 transition-opacity p-1 rounded hover:bg-slate-200" title="Editar entidad">
+                          <mat-icon class="text-[16px] w-4 h-4">edit</mat-icon>
+                        </button>
+                      </div>
+                    </div>
+                  </td>
+
+                  <!-- Gestión Estancia -->
+                  @if (view() === 'general' || view() === 'estancias_nuevas' || view() === 'seguimiento') {
+                    <td class="px-4 py-4 text-[11px] whitespace-normal">
+                      <div class="flex items-start justify-between gap-2 group/gestion">
+                        <div class="flex flex-col gap-1 w-32">
+                          <!-- Aut Tag -->
+                          <div class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded px-2 py-1">
+                            <span class="text-[10px] font-bold text-slate-600">Aut:</span>
+                            @if (r['aut_estancia'] === 'SI') {
+                              <span class="w-6 h-5 rounded bg-emerald-500 text-white flex items-center justify-center text-[9px] font-bold">SI</span>
+                            } @else if (r['aut_estancia'] === 'NO') {
+                              <span class="w-6 h-5 rounded bg-red-500 text-white flex items-center justify-center text-[9px] font-bold">NO</span>
+                            } @else if (r['aut_estancia'] === 'PGP') {
+                              <span class="w-6 h-5 rounded bg-blue-500 text-white flex items-center justify-center text-[9px] font-bold">PGP</span>
+                            } @else if (r['aut_estancia'] === 'PP') {
+                              <span class="w-6 h-5 rounded bg-amber-500 text-white flex items-center justify-center text-[9px] font-bold">PP</span>
+                            } @else {
+                              <span class="px-1.5 py-0.5 rounded bg-slate-200 text-slate-600 flex items-center justify-center text-[9px] font-bold">PEND</span>
+                            }
+                          </div>
+                          <!-- Gestión Tag -->
+                          <div class="flex flex-col items-center justify-center bg-slate-50 border border-slate-200 rounded px-2 py-1.5">
+                            <span class="text-[9px] font-bold text-slate-500 uppercase">Próxima Gestión</span>
+                            <span class="text-[11px] font-bold text-slate-800" [title]="r['fecha_proxima_gestion'] || r['gestion_estancia'] || 'Sin fecha'">
+                              {{ r['fecha_proxima_gestion'] || r['gestion_estancia'] || '---' }}
+                            </span>
+                          </div>
+                        </div>
+                        <div class="flex flex-col items-center gap-1 shrink-0">
+                          <button (click)="openGestionModal(r)" class="text-slate-400 hover:text-slate-800 opacity-0 group-hover/gestion:opacity-100 transition-opacity p-1 rounded hover:bg-slate-200 shrink-0" title="Editar gestión">
+                            <mat-icon class="text-[16px] w-4 h-4">edit</mat-icon>
+                          </button>
+                          @if (r._hasCortes) {
+                            <mat-icon class="text-[14px] w-4 h-4 text-black" title="Tiene cortes o autorizaciones">content_cut</mat-icon>
+                          }
+                        </div>
+                      </div>
+                    </td>
+                  }
+
+                  <!-- Novedades & Observaciones -->
+                  @if (view() === 'general' || view() === 'estancias_nuevas' || view() === 'seguimiento') {
+                    <td class="px-4 py-4 text-[11px] whitespace-normal min-w-[250px]">
+                      <div class="flex items-start justify-between gap-2 group/obs">
+                        <div class="flex-1 flex flex-col gap-1.5">
+                          @if (r['novedad']) {
+                            <div class="text-[10px] font-medium text-amber-700 bg-amber-50 border border-amber-100 px-2 py-1.5 rounded whitespace-pre-line">
+                              {{ r['novedad'] }}
+                            </div>
+                          }
+                          <div class="text-[10px] text-slate-600 italic whitespace-pre-line leading-relaxed">
+                            {{ r._visibleObs }}
+                          </div>
+                          @if (r['justificacion']) {
+                            <div class="text-[9px] text-slate-500 mt-1 whitespace-pre-line">Just: {{ r['justificacion'] }}</div>
+                          }
+                        </div>
+                        <button (click)="openObsModal(r)" class="text-slate-400 hover:text-slate-800 opacity-0 group-hover/obs:opacity-100 transition-opacity p-1 rounded hover:bg-slate-200 shrink-0" title="Agregar observación">
+                          <mat-icon class="text-[16px] w-4 h-4">edit_note</mat-icon>
+                        </button>
+                      </div>
+                    </td>
+                  }
+
+                  <!-- En Trámite -->
+                  @if (view() === 'general' || view() === 'estancias_nuevas' || view() === 'seguimiento') {
+                    <td class="px-4 py-4 text-[11px] whitespace-normal">
+                      <div class="flex items-start justify-between gap-2 group/tramite">
+                        <div class="flex-1">
+                          <div class="font-medium text-slate-800 mb-0.5">{{ r['proceso_notif'] || 'Sin proceso' }}</div>
+                          <div class="text-[10px] text-slate-500 line-clamp-2">{{ r._latestTramite }}</div>
+                        </div>
+                        <button (click)="openTramiteModal(r)" [class]="r._hasTramiteHistory ? 'text-blue-600 hover:text-blue-800 bg-blue-50' : 'text-slate-400 hover:text-slate-800 opacity-0 group-hover/tramite:opacity-100'" class="transition-opacity p-1.5 rounded hover:bg-slate-200 shrink-0" title="Ver/Editar trámite">
+                          <mat-icon class="text-[16px] w-4 h-4">{{ r._hasTramiteHistory ? 'assignment' : 'edit' }}</mat-icon>
+                        </button>
+                      </div>
+                    </td>
+                  }
+                  
+                  <!-- Soportes -->
+                  @if (view() === 'general' || view() === 'estancias_nuevas' || view() === 'seguimiento') {
+                    <td class="px-4 py-4 text-[11px] whitespace-normal">
+                      <div class="flex items-start justify-between gap-2 group/soportes">
+                        <div class="flex-1">
+                          @if (r._latestSoporte; as latest) {
+                            <div class="flex items-center gap-2 mb-2">
+                            <mat-icon [class]="latest.autorizacion_recibida ? 'text-emerald-500' : 'text-red-500'"
+                                      [title]="latest.autorizacion_recibida ? 'Autorización Recibida' : 'Autorización Pendiente'"
+                                      class="text-[18px] w-5 h-5">
+                              {{ latest.autorizacion_recibida ? 'check_circle' : 'error' }}
+                            </mat-icon>
+                            <mat-icon [class]="latest.soporte_pdf_presente ? 'text-emerald-500' : 'text-red-500'"
+                                      [title]="latest.soporte_pdf_presente ? 'PDF Presente' : 'PDF Faltante'"
+                                      class="text-[18px] w-5 h-5">
+                              picture_as_pdf
+                            </mat-icon>
+                            @if (latest.periodo_desde) {
+                              <span class="text-[10px] text-slate-500 font-medium">
+                                Período: {{ latest.periodo_desde | date:'dd/MM' }} - {{ latest.periodo_hasta | date:'dd/MM' }}
+                              </span>
+                            }
+                          </div>
+                          } @else {
+                            <span class="text-slate-400 italic">Sin soportes</span>
+                          }
+                        </div>
+                        <button (click)="openSoportesModal(r)" class="text-slate-400 hover:text-slate-800 opacity-0 group-hover/soportes:opacity-100 transition-opacity p-1 rounded hover:bg-slate-200 shrink-0" title="Gestionar soportes">
+                          <mat-icon class="text-[16px] w-4 h-4">history_edu</mat-icon>
+                        </button>
+                      </div>
+                    </td>
+                  }
+
+                  @if (view() === 'pgp_aic') {
+                    <td class="px-4 py-4 text-[11px] text-slate-700">{{ r['confirmacion_pgp'] || '-' }}</td>
+                    <td class="px-4 py-4 text-[11px] text-slate-600 whitespace-normal">{{ r['justificacion'] || '-' }}</td>
+                  }
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="8" class="px-6 py-12 text-center text-slate-500">
+                    <div class="flex flex-col items-center gap-2">
+                      <mat-icon class="w-8 h-8 text-slate-300 text-[32px]">search</mat-icon>
+                      No se encontraron registros.
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modals -->
+    @if (editingObsRecord()) {
+      <div class="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-lg w-full max-w-lg overflow-hidden flex flex-col">
+          <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+            <h3 class="font-semibold text-slate-800 flex items-center gap-2">
+              <mat-icon class="text-slate-500">edit_note</mat-icon>
+              Observaciones
+            </h3>
+            <button (click)="closeObsModal()" class="text-slate-400 hover:text-slate-600">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+          <div class="p-4 flex-1 overflow-auto max-h-[60vh]">
+            <div class="mb-4 space-y-2">
+              <h4 class="text-xs font-semibold text-slate-600 uppercase">Observaciones Previas</h4>
+              @if (parsedObs().length > 0) {
+                <div class="bg-slate-50 rounded border border-slate-200 divide-y divide-slate-200">
+                  @for (obs of parsedObs(); track $index) {
+                    <div class="p-2 flex justify-between items-start gap-2 hover:bg-slate-100 transition-colors">
+                      <div class="text-sm font-mono whitespace-pre-wrap flex-1" [class.line-through]="obs.isDeleted" [class.text-slate-400]="obs.isDeleted" [class.text-slate-700]="!obs.isDeleted">
+                        {{ obs.text }}
+                      </div>
+                      @if (!obs.isDeleted) {
+                        <button (click)="deleteObs($index)" [disabled]="saving()" class="text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors shrink-0 disabled:opacity-50" title="Eliminar observación">
+                          <mat-icon class="text-[16px] w-4 h-4">delete</mat-icon>
+                        </button>
+                      } @else {
+                        <div class="text-[10px] text-slate-400 italic shrink-0 mt-0.5">
+                          Eliminado por {{ obs.deletedBy }}
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+              } @else {
+                <div class="text-sm text-slate-500 italic p-3 bg-slate-50 rounded border border-slate-200">Sin observaciones previas.</div>
+              }
+            </div>
+            <div class="space-y-2">
+              <label for="newObsInput" class="text-xs font-semibold text-slate-600 uppercase">Nueva Observación</label>
+              <textarea id="newObsInput" #newObsInput class="w-full p-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 focus:outline-none min-h-[100px]" placeholder="Escriba la nueva observación aquí..."></textarea>
+            </div>
+          </div>
+          <div class="p-4 border-t border-slate-200 flex justify-end gap-2 bg-slate-50">
+            <button (click)="closeObsModal()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200 rounded transition-colors">Cancelar</button>
+            <button (click)="saveObs(newObsInput.value)" [disabled]="saving()" class="px-4 py-2 text-sm font-medium text-white bg-slate-800 hover:bg-slate-900 rounded transition-colors disabled:opacity-50 flex items-center gap-2">
+              @if (saving()) {
+                <mat-icon class="animate-spin w-4 h-4 text-[16px]">refresh</mat-icon>
+              }
+              Guardar
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    @if (editingTramiteRecord()) {
+      <div class="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-lg w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+          <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 shrink-0">
+            <h3 class="font-semibold text-slate-800 flex items-center gap-2">
+              <mat-icon class="text-slate-500">assignment</mat-icon>
+              Historial y Registro de Trámite
+            </h3>
+            <button (click)="closeTramiteModal()" class="text-slate-400 hover:text-slate-600">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+          
+          <!-- Historial -->
+          <div class="p-4 overflow-y-auto flex-1 min-h-[400px] bg-slate-50/50">
+            <!-- Tabs -->
+            <div class="flex border-b border-slate-200 mb-4">
+              <button (click)="tramiteTab.set('activos')" [class.border-emerald-500]="tramiteTab() === 'activos'" [class.text-emerald-600]="tramiteTab() === 'activos'" class="px-4 py-2 text-sm font-medium border-b-2 border-transparent transition-colors">Activos</button>
+              <button (click)="tramiteTab.set('historico')" [class.border-emerald-500]="tramiteTab() === 'historico'" [class.text-emerald-600]="tramiteTab() === 'historico'" class="px-4 py-2 text-sm font-medium border-b-2 border-transparent transition-colors">Histórico</button>
+            </div>
+
+            @if (tramiteTab() === 'activos') {
+              @if (activeTramites().length > 0) {
+                <div class="space-y-3">
+                  @for (tramite of activeTramites(); track $index) {
+                    <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+                      <div class="flex justify-between items-start mb-2">
+                        <span class="text-xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">{{ tramite.tipo }}</span>
+                        <div class="flex items-center gap-2">
+                          <span class="text-[10px] text-slate-400">{{ tramite.fecha }}</span>
+                          <button (click)="deleteTramite(parsedTramites().indexOf(tramite))" [disabled]="saving()" class="text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors shrink-0 disabled:opacity-50" title="Eliminar trámite">
+                            <mat-icon class="text-[14px] w-3.5 h-3.5">delete</mat-icon>
+                          </button>
+                        </div>
+                      </div>
+                      <div class="text-sm text-slate-600 whitespace-pre-line">
+                        {{ tramite.nota }}
+                      </div>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <div class="text-sm text-slate-400 italic">No hay trámites activos.</div>
+              }
+            } @else {
+              @if (deletedTramites().length > 0) {
+                <div class="space-y-2">
+                  @for (tramite of deletedTramites(); track $index) {
+                    <div class="bg-slate-100 p-2 rounded border border-slate-200">
+                      <div class="flex justify-between items-center mb-1">
+                        <span class="text-[10px] font-bold text-slate-500">{{ tramite.tipo }}</span>
+                        <span class="text-[9px] text-slate-400">{{ tramite.fecha }}</span>
+                      </div>
+                      <div class="text-xs text-slate-500 line-through whitespace-pre-line">{{ tramite.nota }}</div>
+                      <div class="text-[9px] text-slate-400 italic mt-0.5">Eliminado por {{ tramite.deletedBy }}</div>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <div class="text-sm text-slate-400 italic">No hay trámites en el histórico.</div>
+              }
+            }
+          </div>
+
+          <!-- Formulario -->
+          <div class="p-4 border-t border-slate-200 bg-white shrink-0 space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="space-y-1">
+                <label for="tipoTramiteSelect" class="text-xs font-semibold text-slate-600 uppercase">Tipo de Trámite</label>
+                <select id="tipoTramiteSelect" #tipoTramiteSelect (change)="tramiteOption.set(tipoTramiteSelect.value)" class="w-full p-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white">
+                  <option value="">Seleccione un tipo...</option>
+                  <option value="ACTIVO">ACTIVO (Validación de Derechos)</option>
+                  <option value="Auditoría concurrente">Auditoría concurrente</option>
+                  <option value="Referencia y Contrareferencia">Referencia y Contrareferencia</option>
+                  <option [value]="'Área: ' + (editingTramiteRecord()?.['area'] || 'Sin área')">Área ({{ editingTramiteRecord()?.['area'] || 'Sin área' }})</option>
+                  <option value="Otro">Otro (Manual)</option>
+                </select>
+              </div>
+              
+              <div class="space-y-1" [class.hidden]="tramiteOption() !== 'Otro'">
+                <label for="otroTramiteInput" class="text-xs font-semibold text-slate-600 uppercase">Especificar Trámite</label>
+                <input id="otroTramiteInput" #otroTramiteInput (input)="0" class="w-full p-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="Escriba el tipo de trámite">
+              </div>
+
+              <div class="space-y-1" [class.hidden]="tramiteOption() !== 'ACTIVO'">
+                <label for="autorizadorTramiteInput" class="text-xs font-semibold text-slate-600 uppercase">Autorizador</label>
+                <input id="autorizadorTramiteInput" #autorizadorTramiteInput [value]="tramiteAutorizador()" (input)="tramiteAutorizador.set(autorizadorTramiteInput.value)" class="w-full p-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="Nombre del autorizador">
+              </div>
+            </div>
+
+            <div class="space-y-1">
+              <label for="notaTramiteInput" class="text-xs font-semibold text-slate-600 uppercase">Nota / Observación</label>
+              <textarea id="notaTramiteInput" #notaTramiteInput (input)="0" rows="2" class="w-full p-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 focus:outline-none resize-none" placeholder="Escriba los detalles del trámite..."></textarea>
+            </div>
+          </div>
+
+          <div class="p-4 border-t border-slate-200 flex justify-end gap-2 bg-slate-50 shrink-0">
+            <button (click)="closeTramiteModal()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200 rounded transition-colors">Cerrar</button>
+            <button (click)="saveTramite(tipoTramiteSelect.value, tramiteOption() === 'Otro' ? otroTramiteInput?.value : '', notaTramiteInput.value, tramiteAutorizador())" [disabled]="saving() || !tipoTramiteSelect.value || !notaTramiteInput.value.trim() || (tramiteOption() === 'ACTIVO' && !tramiteAutorizador().trim())" class="px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded transition-colors disabled:opacity-50 flex items-center gap-2">
+              @if (saving()) {
+                <mat-icon class="animate-spin w-4 h-4 text-[16px]">refresh</mat-icon>
+              } @else {
+                <mat-icon class="w-4 h-4 text-[16px]">add</mat-icon>
+              }
+              Agregar Trámite
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    @if (editingSoportesRecord()) {
+      <div class="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-lg w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+          <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+            <h3 class="font-semibold text-slate-800 flex items-center gap-2">
+              <mat-icon class="text-slate-500">folder_shared</mat-icon>
+              Control de Soportes y Autorizaciones
+            </h3>
+            <button (click)="closeSoportesModal()" class="text-slate-400 hover:text-slate-600">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+          
+          <div class="flex-1 overflow-y-auto p-4 space-y-6">
+            <!-- Formulario Nueva Entrada -->
+            @if (isAddingSoporte()) {
+              <div class="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div class="flex items-center justify-between mb-2">
+                  <h4 class="text-sm font-bold text-slate-700 uppercase tracking-wider">Nueva Solicitud / Prórroga</h4>
+                  <button (click)="isAddingSoporte.set(false)" class="text-xs text-slate-500 hover:text-slate-800">Cancelar</button>
+                </div>
+                
+                <div class="grid grid-cols-3 gap-4">
+                  <div class="space-y-1">
+                    <label for="fechaSolicitud" class="text-[10px] font-bold text-slate-500 uppercase">Fecha Solicitud</label>
+                    <input id="fechaSolicitud" type="date" [value]="newSoporte().fecha_solicitud" (input)="updateNewSoporteField('fecha_solicitud', $any($event.target).value)"
+                           class="w-full p-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                  </div>
+                  <div class="space-y-1">
+                    <label for="periodoDesde" class="text-[10px] font-bold text-slate-500 uppercase">Desde</label>
+                    <input id="periodoDesde" type="date" [value]="newSoporte().periodo_desde" (input)="updateNewSoporteField('periodo_desde', $any($event.target).value)"
+                           class="w-full p-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                  </div>
+                  <div class="space-y-1">
+                    <label for="periodoHasta" class="text-[10px] font-bold text-slate-500 uppercase">Hasta</label>
+                    <input id="periodoHasta" type="date" [value]="newSoporte().periodo_hasta" (input)="updateNewSoporteField('periodo_hasta', $any($event.target).value)"
+                           class="w-full p-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-6 pt-2">
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" [checked]="newSoporte().autorizacion_recibida" (change)="updateNewSoporteField('autorizacion_recibida', $any($event.target).checked)"
+                           class="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500">
+                    <span class="text-sm font-medium text-slate-700">Autorización Recibida</span>
+                  </label>
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" [checked]="newSoporte().soporte_pdf_presente" (change)="updateNewSoporteField('soporte_pdf_presente', $any($event.target).checked)"
+                           class="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500">
+                    <span class="text-sm font-medium text-slate-700">Soporte PDF Presente</span>
+                  </label>
+                </div>
+
+                <div class="flex justify-end pt-2">
+                  <button (click)="addSoporteEntry()" class="px-4 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded shadow-sm transition-colors">
+                    Agregar a la lista
+                  </button>
+                </div>
+              </div>
+            } @else {
+              <button (click)="isAddingSoporte.set(true)" class="w-full py-3 border-2 border-dashed border-slate-200 rounded-lg text-slate-500 hover:border-emerald-300 hover:text-emerald-600 hover:bg-emerald-50/30 transition-all flex items-center justify-center gap-2 font-medium text-sm">
+                <mat-icon>add_circle_outline</mat-icon>
+                Nueva Solicitud / Prórroga
+              </button>
+            }
+
+            <!-- Historial de Soportes -->
+            <div class="space-y-3">
+              <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                <mat-icon class="text-[16px] w-4 h-4">history</mat-icon>
+                Historial de Gestiones
+              </h4>
+              
+              @if (soportesHistory().length === 0) {
+                <div class="text-center py-8 bg-slate-50 rounded-lg border border-slate-100">
+                  <mat-icon class="text-slate-300 text-[40px] w-10 h-10 mb-2">folder_off</mat-icon>
+                  <p class="text-sm text-slate-500">No hay registros de soportes.</p>
+                </div>
+              } @else {
+                <div class="space-y-3">
+                  @for (entry of soportesHistory(); track entry.id) {
+                    <div class="bg-white border border-slate-200 rounded-lg p-3 hover:shadow-md transition-shadow relative group">
+                      <button (click)="removeSoporteEntry(entry.id)" class="absolute top-2 right-2 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <mat-icon class="text-[18px]">delete_outline</mat-icon>
+                      </button>
+
+                      <div class="flex items-start gap-4">
+                        <div class="flex flex-col items-center justify-center min-w-[60px] py-1 bg-slate-50 rounded border border-slate-100">
+                          <span class="text-[10px] font-bold text-slate-400 uppercase">{{ entry.fecha_solicitud | date:'MMM' }}</span>
+                          <span class="text-lg font-black text-slate-700 leading-none">{{ entry.fecha_solicitud | date:'dd' }}</span>
+                        </div>
+
+                        <div class="flex-1 space-y-2">
+                          <div class="flex items-center gap-2">
+                            <mat-icon [class]="entry.autorizacion_recibida ? 'text-emerald-500' : 'text-red-500'" 
+                                      [title]="entry.autorizacion_recibida ? 'Autorización Recibida' : 'Autorización Pendiente'"
+                                      class="text-[18px] w-5 h-5">
+                              {{ entry.autorizacion_recibida ? 'check_circle' : 'error' }}
+                            </mat-icon>
+                            <mat-icon [class]="entry.soporte_pdf_presente ? 'text-emerald-500' : 'text-red-500'"
+                                      [title]="entry.soporte_pdf_presente ? 'PDF Presente' : 'PDF Faltante'"
+                                      class="text-[18px] w-5 h-5">
+                              picture_as_pdf
+                            </mat-icon>
+                            @if (entry.periodo_desde) {
+                              <span class="text-[10px] text-slate-500 font-medium">
+                                Período: {{ entry.periodo_desde | date:'dd/MM' }} - {{ entry.periodo_hasta | date:'dd/MM' }}
+                              </span>
+                            }
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+
+          <div class="p-4 border-t border-slate-200 flex justify-end gap-2 bg-slate-50">
+            <button (click)="closeSoportesModal()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200 rounded transition-colors">Cerrar</button>
+            <button (click)="saveSoportes()" [disabled]="saving() || isAddingSoporte()" class="px-6 py-2 text-sm font-bold text-white bg-slate-800 hover:bg-slate-900 rounded shadow-md transition-all disabled:opacity-50 flex items-center gap-2">
+              @if (saving()) {
+                <mat-icon class="animate-spin w-4 h-4 text-[16px]">refresh</mat-icon>
+              }
+              Guardar Cambios
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    @if (editingGestionRecord()) {
+      <div class="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-lg w-full max-w-md overflow-hidden flex flex-col">
+          <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+            <h3 class="font-semibold text-slate-800 flex items-center gap-2">
+              <mat-icon class="text-slate-500">manage_accounts</mat-icon>
+              Gestión Estancia
+            </h3>
+            <button (click)="closeGestionModal()" class="text-slate-400 hover:text-slate-600">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+          <div class="p-4 space-y-4">
+            <div class="space-y-1">
+              <label for="autInput" class="text-xs font-semibold text-slate-600 uppercase">Autorización Estancia</label>
+              <select id="autInput" [value]="autInputValue()" (change)="autInputValue.set($any($event.target).value)" class="w-full p-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white">
+                <option value="SI">SI</option>
+                <option value="NO">NO</option>
+                <option value="PGP">PGP</option>
+                <option value="PP">PP</option>
+              </select>
+            </div>
+            
+            @if (autInputValue() === 'NO' || autInputValue() === 'PGP' || autInputValue() === 'PP') {
+              <div class="space-y-1 animate-in fade-in duration-200">
+                <label for="tipoContratoInput" class="text-xs font-semibold text-slate-600 uppercase">Tipo de Contrato ({{autInputValue()}})</label>
+                <select id="tipoContratoInput" [value]="tipoContratoInputValue()" (change)="tipoContratoInputValue.set($any($event.target).value)" class="w-full p-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white">
+                  <option value="">Seleccione...</option>
+                  <option value="PGP">PGP</option>
+                  <option value="NO">NO</option>
+                  <option value="PP">PP</option>
+                </select>
+              </div>
+            }
+            <div class="space-y-1">
+              <label for="gestionInput" class="text-xs font-semibold text-slate-600 uppercase">Frecuencia de Gestión (Días)</label>
+              <div class="flex items-center gap-2">
+                <span class="text-sm text-slate-500">Cada</span>
+                <input id="gestionInput" type="number" min="0" [value]="gestionInputValue()" (input)="gestionInputValue.set($any($event.target).value)" class="w-20 p-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 focus:outline-none text-center">
+                <span class="text-sm text-slate-500">días</span>
+              </div>
+              <p class="text-[10px] text-slate-500 mt-1">Deje en 0 para "Integral - No se gestiona"</p>
+            </div>
+            <div class="space-y-1">
+              <label for="nextDateInput" class="text-xs font-semibold text-slate-600 uppercase">Fecha Próxima Gestión (Calculada)</label>
+              <input id="nextDateInput" type="date" [value]="calculateNextDate(gestionInputValue())" disabled class="w-full p-2 text-sm border border-slate-300 rounded bg-slate-100">
+            </div>
+          </div>
+          <div class="p-4 border-t border-slate-200 flex justify-end gap-2 bg-slate-50">
+            <button (click)="closeGestionModal()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200 rounded transition-colors">Cancelar</button>
+            <button (click)="saveGestion(autInputValue(), tipoContratoInputValue(), gestionInputValue(), calculateNextDate(gestionInputValue()))" [disabled]="saving()" class="px-4 py-2 text-sm font-medium text-white bg-slate-800 hover:bg-slate-900 rounded transition-colors disabled:opacity-50 flex items-center gap-2">
+              @if (saving()) {
+                <mat-icon class="animate-spin w-4 h-4 text-[16px]">refresh</mat-icon>
+              }
+              Guardar
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    @if (editingDerechosRecord()) {
+      <div class="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-lg w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
+          <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+            <h3 class="font-semibold text-slate-800 flex items-center gap-2">
+              <mat-icon class="text-slate-500">fact_check</mat-icon>
+              Validar Derechos del Paciente
+            </h3>
+            <button (click)="closeDerechosModal()" class="text-slate-400 hover:text-slate-600">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+          
+          <div class="flex border-b border-slate-200 bg-slate-50">
+            <button (click)="derechosTab.set('validacion')" [class]="derechosTab() === 'validacion' ? 'flex-1 py-3 text-sm font-medium text-emerald-600 border-b-2 border-emerald-600 bg-white' : 'flex-1 py-3 text-sm font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-100'">Validación</button>
+            <button (click)="derechosTab.set('historial')" [class]="derechosTab() === 'historial' ? 'flex-1 py-3 text-sm font-medium text-emerald-600 border-b-2 border-emerald-600 bg-white' : 'flex-1 py-3 text-sm font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-100'">Historial</button>
+          </div>
+
+          <div class="p-4 overflow-y-auto flex-1 min-h-[400px]">
+            @if (derechosError()) {
+              <div class="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl flex flex-col gap-3 shadow-sm">
+                <div class="flex items-start gap-2">
+                  <mat-icon class="text-[18px] w-4 h-4 mt-0.5 shrink-0">error_outline</mat-icon>
+                  <span class="font-medium">{{ derechosError() }}</span>
+                </div>
+                @if (derechosError()?.includes('derechos_paciente')) {
+                  <div class="bg-white/50 p-3 rounded border border-red-100 font-mono text-[10px] break-all">
+                    ALTER TABLE base_hoy ADD COLUMN derechos_paciente jsonb;
+                  </div>
+                  <p class="text-[11px] text-red-600 italic">Ejecuta el comando anterior en el editor SQL de Supabase y presiona "Reload Schema".</p>
+                }
+              </div>
+            }
+
+            @if (derechosTab() === 'validacion') {
+              @if (editingDerechosRecord()?.['valdiacion_derechos']) {
+                <div class="mb-6">
+                  <h4 class="text-xs font-semibold text-slate-500 uppercase mb-2">Última Validación</h4>
+                  <div class="flex items-center gap-4 p-3 bg-emerald-50 rounded-lg border border-emerald-200 text-sm">
+                    <div class="flex-1">
+                      <span class="font-bold text-emerald-800">{{ getDerechosEstado(editingDerechosRecord()) }}</span>
+                      <div class="text-[10px] text-emerald-600">Autorizado por: {{ editingDerechosRecord()?.['autorizador'] || editingDerechosRecord()?.['validacion_derechos'] }}</div>
+                    </div>
+                    <div class="text-xs text-emerald-600 font-mono">
+                      {{ (editingDerechosRecord()?.['valdiacion_derechos_fecha'] || editingDerechosRecord()?.['validacion_derechos_fecha']) | date:'dd/MM/yyyy hh:mm:ss a' }}
+                    </div>
+                  </div>
+                </div>
+              }
+
+              <div class="space-y-4">
+                <h4 class="text-xs font-semibold text-slate-500 uppercase">Nueva Validación</h4>
+                <div class="space-y-1">
+                  <label for="estadoDerechos" class="text-xs font-semibold text-slate-600 uppercase">Estado de Derechos</label>
+                  <select id="estadoDerechos" class="w-full p-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white"
+                          [value]="derechosEstadoInput()"
+                          (change)="derechosEstadoInput.set($any($event.target).value)">
+                    <option value="Activo">Activo</option>
+                    <option value="Suspendido">Suspendido</option>
+                    <option value="Cancelado">Cancelado</option>
+                    <option value="Inactivo">Inactivo</option>
+                    <option value="Cambio de EPS">Cambio de EPS</option>
+                  </select>
+                </div>
+                <div class="space-y-1">
+                  <label for="autorizadorDerechos" class="text-xs font-semibold text-slate-600 uppercase">Nombre del Autorizador</label>
+                  <input id="autorizadorDerechos" class="w-full p-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="Nombre del autorizador"
+                         [value]="derechosAutorizadorInput()"
+                         (input)="derechosAutorizadorInput.set($any($event.target).value)">
+                </div>
+              </div>
+            }
+
+            @if (derechosTab() === 'historial') {
+              @if (historialDerechos().length > 0) {
+                <div class="space-y-2">
+                  @for (derecho of historialDerechos(); track $index) {
+                    <div class="flex items-center gap-4 p-3 bg-slate-50 rounded-lg border border-slate-200 text-sm">
+                      <div class="flex-1">
+                        <div class="flex items-center gap-2 mb-1">
+                          <span class="bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded text-[10px] font-bold">#{{ historialDerechos().length - $index }}</span>
+                          <span class="font-bold text-emerald-700">{{ derecho.estado }}</span>
+                        </div>
+                        <div class="text-[10px] text-slate-500">
+                          Autorizador: <strong>{{ derecho.autorizador }}</strong>
+                        </div>
+                      </div>
+                      <div class="text-xs text-slate-400 font-mono">{{ derecho.fecha || derecho.cambiado_en | date:'dd/MM/yyyy hh:mm:ss a' }}</div>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <div class="text-center p-8 text-slate-400">
+                  <mat-icon class="text-4xl mb-2 opacity-50">history</mat-icon>
+                  <p class="text-sm">No hay historial de validaciones anteriores.</p>
+                </div>
+              }
+            }
+          </div>
+          
+          <div class="p-4 border-t border-slate-200 flex justify-end gap-2 bg-slate-50">
+            <button (click)="closeDerechosModal()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200 rounded transition-colors">Cancelar</button>
+            
+            @if (editingDerechosRecord()?.['validacion_derechos'] || editingDerechosRecord()?.['valdiacion_derechos']) {
+              <button (click)="anularDerechos()" [disabled]="saving()" class="px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50 flex items-center gap-2">
+                @if (saving()) {
+                  <mat-icon class="animate-spin w-4 h-4 text-[16px]">refresh</mat-icon>
+                } @else {
+                  <mat-icon class="w-4 h-4 text-[16px]">delete_sweep</mat-icon>
+                }
+                Anular Validación
+              </button>
+            }
+            
+            @if (derechosTab() === 'validacion') {
+              <button (click)="saveDerechos()" [disabled]="saving()" class="px-4 py-2 text-sm font-medium text-white bg-slate-800 hover:bg-slate-900 rounded transition-colors disabled:opacity-50 flex items-center gap-2">
+                @if (saving()) {
+                  <mat-icon class="animate-spin w-4 h-4 text-[16px]">refresh</mat-icon>
+                }
+                Guardar Validación
+              </button>
+            }
+          </div>
+        </div>
+      </div>
+    }
+
+    @if (editingEntidadRecord()) {
+      <div class="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-lg w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+          <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 shrink-0">
+            <h3 class="font-semibold text-slate-800 flex items-center gap-2">
+              <mat-icon class="text-slate-500">business</mat-icon>
+              Entidad / EPS
+            </h3>
+            <button (click)="closeEntidadModal()" class="text-slate-400 hover:text-slate-600">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+          
+          <!-- Tabs -->
+          <div class="flex border-b border-slate-200 shrink-0 bg-slate-50">
+            <button (click)="entidadTab.set('datos')" [class.border-emerald-500]="entidadTab() === 'datos'" [class.text-emerald-600]="entidadTab() === 'datos'" [class.bg-white]="entidadTab() === 'datos'" class="flex-1 py-3 text-sm font-medium border-b-2 transition-colors hover:bg-slate-100" [class.border-transparent]="entidadTab() !== 'datos'" [class.text-slate-500]="entidadTab() !== 'datos'">Datos de Entidad</button>
+            <button (click)="entidadTab.set('cortes')" [class.border-emerald-500]="entidadTab() === 'cortes'" [class.text-emerald-600]="entidadTab() === 'cortes'" [class.bg-white]="entidadTab() === 'cortes'" class="flex-1 py-3 text-sm font-medium border-b-2 transition-colors hover:bg-slate-100" [class.border-transparent]="entidadTab() !== 'cortes'" [class.text-slate-500]="entidadTab() !== 'cortes'">Cortes de Estancia</button>
+          </div>
+
+          <div class="p-4 overflow-y-auto flex-1 min-h-[400px]">
+            @if (entidadTab() === 'datos') {
+              <div class="space-y-4">
+                <div class="space-y-1">
+                  <label for="entidadInput" class="text-xs font-semibold text-slate-600 uppercase">Entidad Principal</label>
+                  <input id="entidadInput" [value]="entidadInputValue()" (input)="entidadInputValue.set($any($event.target).value)" class="w-full p-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="Ej: Nueva EPS">
+                </div>
+                <div class="space-y-1">
+                  <label for="epsSoatInput" class="text-xs font-semibold text-slate-600 uppercase">EPS</label>
+                  <div class="relative">
+                    <div class="relative z-50">
+                      <mat-icon class="absolute left-2 top-1/2 -translate-y-1/2 text-[18px] w-4.5 h-4.5 text-slate-400">search</mat-icon>
+                      <input id="epsSoatInput" #epsSoatInput [value]="epsSearchText()" 
+                             (input)="onEpsInput($event)" (focus)="showEpsDropdown.set(true)" (click)="showEpsDropdown.set(true)"
+                             autocomplete="off"
+                             class="w-full pl-8 pr-8 py-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 focus:outline-none relative z-50 bg-white" 
+                             placeholder="Buscar EPS...">
+                      @if (epsSearchText()) {
+                        <button (click)="clearEps()" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none z-50" title="Limpiar EPS">
+                          <mat-icon class="text-[18px] w-4.5 h-4.5">close</mat-icon>
+                        </button>
+                      }
+                    </div>
+                    @if (showEpsDropdown()) {
+                      <div class="fixed inset-0 z-40" 
+                           (click)="showEpsDropdown.set(false)" 
+                           (keydown.escape)="showEpsDropdown.set(false)"
+                           tabindex="0"
+                           role="button"
+                           aria-label="Cerrar lista de EPS"></div>
+                      <div class="absolute z-50 w-full bg-white border border-slate-200 rounded-lg shadow-2xl mt-1 max-h-48 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-200" style="background-color: white;">
+                        @for (eps of filteredEps(); track eps) {
+                          <div class="px-3 py-2 text-sm hover:bg-emerald-50 cursor-pointer flex items-center justify-between group" 
+                               (click)="selectEps(eps)" 
+                               (keydown.enter)="selectEps(eps)" 
+                               tabindex="0"
+                               role="button">
+                            <span class="text-slate-700 group-hover:text-emerald-700">{{ eps }}</span>
+                            @if (epsSearchText() === eps) {
+                              <mat-icon class="text-emerald-500 text-[16px] w-4 h-4">check</mat-icon>
+                            }
+                          </div>
+                        } @empty {
+                          <div class="p-4 text-center">
+                            <mat-icon class="text-slate-300 mb-1">search_off</mat-icon>
+                            <div class="text-xs text-slate-500 italic">No se encontraron resultados</div>
+                          </div>
+                        }
+                      </div>
+                    }
+                  </div>
+                  <p class="text-[10px] text-slate-500 mt-1">Utilice este campo para registrar la EPS del paciente cuando la entidad principal es SOAT. Puede buscar en la lista.</p>
+                </div>
+                <div class="space-y-1">
+                  <label for="contratoInput" class="text-xs font-semibold text-slate-600 uppercase">Contrato</label>
+                  <select id="contratoInput" [value]="contratoInputValue()" (change)="contratoInputValue.set($any($event.target).value)" class="w-full p-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white">
+                    <option value="">Seleccione...</option>
+                    <option value="SI">SI</option>
+                    <option value="NO">NO</option>
+                  </select>
+                </div>
+              </div>
+            } @else {
+              <div class="space-y-4">
+                <!-- Alertas -->
+                @if (calcularDiasCorte(editingEntidadRecord()!) >= 30) {
+                  <div class="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg flex items-start gap-2 text-sm">
+                    <mat-icon class="text-red-500 shrink-0">warning</mat-icon>
+                    <div>
+                      <strong>¡Alerta de Corte!</strong> Han pasado {{ calcularDiasCorte(editingEntidadRecord()!) }} días desde el último corte o ingreso. Se superó el límite de 30 días.
+                    </div>
+                  </div>
+                } @else if (calcularDiasCorte(editingEntidadRecord()!) >= 25) {
+                  <div class="bg-amber-50 border border-amber-200 text-amber-700 p-3 rounded-lg flex items-start gap-2 text-sm">
+                    <mat-icon class="text-amber-500 shrink-0">schedule</mat-icon>
+                    <div>
+                      <strong>Próximo a vencer:</strong> Han pasado {{ calcularDiasCorte(editingEntidadRecord()!) }} días. El corte debe realizarse antes de los 30 días.
+                    </div>
+                  </div>
+                }
+                
+                <!-- Lista de Cortes -->
+                <div class="border border-slate-200 rounded-lg overflow-hidden">
+                  <table class="w-full text-sm text-left">
+                    <thead class="bg-slate-50 text-xs text-slate-500 uppercase">
+                      <tr>
+                        <th class="px-3 py-2">Tipo</th>
+                        <th class="px-3 py-2">Autorización</th>
+                        <th class="px-3 py-2">Fecha Corte</th>
+                        <th class="px-3 py-2 w-10"></th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200">
+                      @for (corte of cortesEstancia(); track corte.id) {
+                        <tr class="hover:bg-slate-50">
+                          <td class="px-3 py-2">{{ corte.tipo }}</td>
+                          <td class="px-3 py-2 font-medium">{{ corte.autorizacion }}</td>
+                          <td class="px-3 py-2">{{ corte.fecha_corte | date:'dd/MM/yyyy' }}</td>
+                          <td class="px-3 py-2 text-right">
+                            <button (click)="deleteCorte(corte.id)" class="text-slate-400 hover:text-red-600 transition-colors" title="Eliminar corte">
+                              <mat-icon class="text-[16px] w-4 h-4">delete</mat-icon>
+                            </button>
+                          </td>
+                        </tr>
+                      } @empty {
+                        <tr>
+                          <td colspan="4" class="px-3 py-4 text-center text-slate-500 text-xs italic">No hay cortes registrados</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- Registrar Nuevo Corte -->
+                <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-3">
+                  <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Registrar Nuevo Corte</h4>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div class="space-y-1">
+                      <label for="tipoCorte" class="text-[10px] font-bold text-slate-500 uppercase">Tipo de Corte</label>
+                      <select id="tipoCorte" #tipoCorteInput (change)="tipoCorteSeleccionado.set(tipoCorteInput.value)" class="w-full p-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white">
+                        <option value="Direccionamiento">Direccionamiento</option>
+                        <option value="Corte administrativo">Corte administrativo</option>
+                        <option value="Cambio de EPS">Cambio de EPS</option>
+                        <option value="Otro">Otro</option>
+                      </select>
+                    </div>
+                    @if (tipoCorteSeleccionado() === 'Otro') {
+                      <div class="space-y-1">
+                        <label for="otroTipoCorte" class="text-[10px] font-bold text-slate-500 uppercase">Especifique el tipo</label>
+                        <input id="otroTipoCorte" #otroTipoInput (input)="otroTipoCorte.set(otroTipoInput.value)" class="w-full p-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="Especifique el tipo de corte">
+                      </div>
+                    }
+                    <div class="space-y-1">
+                      <label for="autCorte" class="text-[10px] font-bold text-slate-500 uppercase">Autorización</label>
+                      <input id="autCorte" #autCorteInput class="w-full p-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="N° de Autorización">
+                    </div>
+                    <div class="space-y-1 md:col-span-2">
+                      <label for="fechaCorte" class="text-[10px] font-bold text-slate-500 uppercase">Fecha Egreso en Entidad</label>
+                      <input id="fechaCorte" #fechaCorteInput type="date" class="w-full p-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                    </div>
+                  </div>
+                  <button (click)="saveCorte(tipoCorteSeleccionado() === 'Otro' ? otroTipoCorte() : tipoCorteSeleccionado(), autCorteInput.value, fechaCorteInput.value)" class="w-full py-2 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded shadow-sm transition-colors flex items-center justify-center gap-2">
+                    <mat-icon class="w-4 h-4 text-[16px]">add</mat-icon>
+                    Agregar Corte
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+          <div class="p-4 border-t border-slate-200 flex justify-end gap-2 bg-slate-50 shrink-0">
+            <button (click)="closeEntidadModal()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200 rounded transition-colors">Cerrar</button>
+            @if (entidadTab() === 'datos') {
+              <button (click)="saveEntidad()" [disabled]="saving()" class="px-4 py-2 text-sm font-medium text-white bg-slate-800 hover:bg-slate-900 rounded transition-colors disabled:opacity-50 flex items-center gap-2">
+                @if (saving()) {
+                  <mat-icon class="animate-spin w-4 h-4 text-[16px]">refresh</mat-icon>
+                }
+                Guardar Datos
+              </button>
+            }
+          </div>
+        </div>
+      </div>
+    }
+
+    @if (viewingDetalleRecord()) {
+      <div class="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-lg w-full max-w-6xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
+          <!-- Header -->
+          <div class="bg-slate-50 border-b border-slate-200 px-6 py-4 flex justify-between items-center shrink-0">
+            <div class="flex items-center gap-4">
+              <div class="w-10 h-10 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center">
+                <mat-icon class="text-[20px] w-5 h-5">person</mat-icon>
+              </div>
+              <div>
+                <h2 class="text-lg font-bold text-slate-800">{{ viewingDetalleRecord()?.['nombre'] || 'Paciente Sin Nombre' }}</h2>
+                <div class="text-xs text-slate-500 flex items-center gap-2 mt-0.5">
+                  <span class="font-mono bg-white px-1.5 py-0.5 rounded text-slate-700 border border-slate-200">HC: {{ viewingDetalleRecord()?.['hc'] || 'N/A' }}</span>
+                  <span class="font-mono bg-white px-1.5 py-0.5 rounded text-slate-700 border border-slate-200">Ing: {{ viewingDetalleRecord()?.['ingreso'] || 'N/A' }}</span>
+                  <span>&bull;</span>
+                  <span>{{ viewingDetalleRecord()?.['area'] || 'Sin área' }} - Cama {{ viewingDetalleRecord()?.['cama'] || 'N/A' }}</span>
+                </div>
+              </div>
+            </div>
+            <button (click)="closeDetalleModal()" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200 text-slate-500 transition-colors">
+              <mat-icon class="text-[20px] w-5 h-5">close</mat-icon>
+            </button>
+          </div>
+
+          <!-- Body -->
+          <div class="flex-1 overflow-auto p-6 bg-slate-50/50">
+            <div class="space-y-6">
+              
+              <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                
+                <!-- Section: Identificación & Ingreso -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                  <div class="bg-slate-100 px-4 py-3 border-b border-slate-200 flex items-center gap-2">
+                    <mat-icon class="text-slate-500 text-[18px] w-4 h-4">badge</mat-icon>
+                    <h3 class="font-semibold text-slate-800 text-sm">Datos de Ingreso</h3>
+                  </div>
+                  <div class="p-4 grid grid-cols-2 gap-4">
+                    <div class="col-span-2 sm:col-span-1">
+                      <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">N° Ingreso</div>
+                      <div class="text-sm text-slate-800 font-mono">{{ viewingDetalleRecord()?.['ingreso'] || '-' }}</div>
+                    </div>
+                    <div class="col-span-2 sm:col-span-1">
+                      <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Fecha Ingreso</div>
+                      <div class="text-sm text-slate-800">{{ viewingDetalleRecord()?.['fecha_ingreso'] || '-' }}</div>
+                    </div>
+                    <div class="col-span-2 sm:col-span-1">
+                      <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Fecha Hosp.</div>
+                      <div class="text-sm text-slate-800">{{ viewingDetalleRecord()?.['fecha_hosp'] || '-' }}</div>
+                    </div>
+                    <div class="col-span-2 sm:col-span-1">
+                      <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Días Estancia</div>
+                      <div class="text-sm text-slate-800 flex gap-2">
+                        <span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-200 font-bold text-xs">DI: {{ viewingDetalleRecord()?.['dias_ingr'] || 0 }}</span>
+                        <span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-200 font-bold text-xs">DH: {{ viewingDetalleRecord()?.['dias_hosp'] || 0 }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Section: Entidad -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                  <div class="bg-slate-100 px-4 py-3 border-b border-slate-200 flex items-center gap-2">
+                    <mat-icon class="text-slate-500 text-[18px] w-4 h-4">business</mat-icon>
+                    <h3 class="font-semibold text-slate-800 text-sm">Información de Entidad</h3>
+                  </div>
+                  <div class="p-4 grid grid-cols-2 gap-4">
+                    <div class="col-span-2">
+                      <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Entidad Principal</div>
+                      <div class="text-sm text-slate-800 font-medium">{{ viewingDetalleRecord()?.['entidad'] || '-' }}</div>
+                    </div>
+                    <div class="col-span-2 sm:col-span-1">
+                      <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Contrato</div>
+                      <div class="text-sm text-slate-800">{{ viewingDetalleRecord()?.['contrato'] || '-' }}</div>
+                    </div>
+                    <div class="col-span-2 sm:col-span-1">
+                      <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Municipio</div>
+                      <div class="text-sm text-slate-800">{{ viewingDetalleRecord()?.['municipio'] || '-' }}</div>
+                    </div>
+                    @if (viewingDetalleRecord()?.['eps_soat']) {
+                      <div class="col-span-2">
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">EPS</div>
+                        <div class="text-sm text-emerald-700 font-medium">{{ viewingDetalleRecord()?.['eps_soat'] }}</div>
+                      </div>
+                    }
+                    
+                    @if (getCortesEstancia(viewingDetalleRecord()!).length > 0) {
+                      <div class="col-span-2 mt-2 pt-4 border-t border-slate-100">
+                        <div class="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-2 flex items-center gap-1">
+                          <mat-icon class="text-[14px] w-3 h-3">event_repeat</mat-icon>
+                          Control de Estancia / Cortes
+                        </div>
+                        
+                        <div class="border border-slate-200 rounded-lg overflow-hidden mb-3">
+                          <table class="w-full text-sm text-left">
+                            <thead class="bg-slate-50 text-xs text-slate-500 uppercase">
+                              <tr>
+                                <th class="px-3 py-2">Tipo</th>
+                                <th class="px-3 py-2">Autorización</th>
+                                <th class="px-3 py-2">Fecha Corte</th>
+                              </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-200">
+                              @for (corte of getCortesEstancia(viewingDetalleRecord()!); track corte.id) {
+                                <tr class="hover:bg-slate-50">
+                                  <td class="px-3 py-2">{{ corte.tipo }}</td>
+                                  <td class="px-3 py-2 font-medium">{{ corte.autorizacion }}</td>
+                                  <td class="px-3 py-2">{{ corte.fecha_corte | date:'dd/MM/yyyy' }}</td>
+                                </tr>
+                              }
+                            </tbody>
+                          </table>
+                        </div>
+                        
+                        @if (calcularDiasCorte(viewingDetalleRecord()!) >= 30) {
+                          <div class="mt-3 bg-red-50 border border-red-200 text-red-700 p-2.5 rounded-lg flex items-start gap-2 text-xs">
+                            <mat-icon class="text-red-500 shrink-0 text-[16px] w-4 h-4">warning</mat-icon>
+                            <div>
+                              <strong>¡Alerta de Corte!</strong> Han pasado {{ calcularDiasCorte(viewingDetalleRecord()!) }} días desde el último corte o ingreso. Se superó el límite de 30 días.
+                            </div>
+                          </div>
+                        } @else if (calcularDiasCorte(viewingDetalleRecord()!) >= 25) {
+                          <div class="mt-3 bg-amber-50 border border-amber-200 text-amber-700 p-2.5 rounded-lg flex items-start gap-2 text-xs">
+                            <mat-icon class="text-amber-500 shrink-0 text-[16px] w-4 h-4">schedule</mat-icon>
+                            <div>
+                              <strong>Próximo a vencer:</strong> Han pasado {{ calcularDiasCorte(viewingDetalleRecord()!) }} días. El corte debe realizarse antes de los 30 días.
+                            </div>
+                          </div>
+                        }
+                      </div>
+                    }
+                  </div>
+                </div>
+
+                <!-- Section: Gestión -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                  <div class="bg-slate-100 px-4 py-3 border-b border-slate-200 flex items-center gap-2">
+                    <mat-icon class="text-slate-500 text-[18px] w-4 h-4">manage_accounts</mat-icon>
+                    <h3 class="font-semibold text-slate-800 text-sm">Gestión y Trámite</h3>
+                  </div>
+                  <div class="p-4 grid grid-cols-2 gap-4">
+                    <div class="col-span-2 sm:col-span-1">
+                      <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Aut. Estancia</div>
+                      <div class="text-sm">
+                        <span class="px-2 py-0.5 rounded text-xs font-bold border" [ngClass]="viewingDetalleRecord()?.['aut_estancia'] === 'SI' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'">
+                          {{ viewingDetalleRecord()?.['aut_estancia'] || 'NO' }}
+                        </span>
+                        @if (viewingDetalleRecord()?.['aut_estancia'] === 'NO' || viewingDetalleRecord()?.['aut_estancia'] === 'PGP' || viewingDetalleRecord()?.['aut_estancia'] === 'PP') {
+                          @if (viewingDetalleRecord()?.['tipo_contrato_no_aut']) {
+                            <span class="ml-2 px-2 py-0.5 rounded text-xs font-bold border bg-slate-100 text-slate-700 border-slate-300">
+                              {{ viewingDetalleRecord()?.['tipo_contrato_no_aut'] }}
+                            </span>
+                          }
+                        }
+                      </div>
+                    </div>
+                    <div class="col-span-2 sm:col-span-1">
+                      <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Fecha Próxima Gestión</div>
+                      <div class="text-sm text-slate-800 font-bold">{{ viewingDetalleRecord()?.['fecha_proxima_gestion'] || viewingDetalleRecord()?.['gestion_estancia'] || '-' }}</div>
+                    </div>
+                    <div class="col-span-2 sm:col-span-1">
+                      <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Proceso Notif.</div>
+                      <div class="text-sm text-slate-800">{{ viewingDetalleRecord()?.['proceso_notif'] || '-' }}</div>
+                    </div>
+                    <div class="col-span-2">
+                      <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Nota Trámite</div>
+                      <div class="text-sm text-slate-800">{{ getLatestTramiteNota(viewingDetalleRecord()?.['nombre_notif']) }}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Section: Giro Cama -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden md:col-span-2 xl:col-span-3">
+                  <div class="bg-slate-100 px-4 py-3 border-b border-slate-200 flex items-center gap-2">
+                    <mat-icon class="text-slate-500 text-[18px] w-4 h-4">history</mat-icon>
+                    <h3 class="font-semibold text-slate-800 text-sm">Historial de Giro Cama</h3>
+                  </div>
+                  <div class="p-4">
+                    @if (viewingDetalleRecord()?.['giro_cama']) {
+                      <div class="text-sm text-slate-700 bg-slate-50 p-4 rounded-lg border border-slate-200 whitespace-pre-line font-mono leading-relaxed">
+                        {{ viewingDetalleRecord()?.['giro_cama'] }}
+                      </div>
+                    } @else {
+                      <div class="text-sm text-slate-400 italic">Sin historial de giro cama registrado.</div>
+                    }
+                  </div>
+                </div>
+
+                <!-- Section: Novedades y Observaciones (Full Width) -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden md:col-span-2 xl:col-span-3">
+                  <div class="bg-slate-100 px-4 py-3 border-b border-slate-200 flex items-center gap-2">
+                    <mat-icon class="text-slate-500 text-[18px] w-4 h-4">edit_note</mat-icon>
+                    <h3 class="font-semibold text-slate-800 text-sm">Novedades y Observaciones</h3>
+                  </div>
+                  <div class="p-4 grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="md:col-span-1">
+                      <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Novedad</div>
+                      @if (viewingDetalleRecord()?.['novedad']) {
+                        <div class="text-sm text-amber-800 bg-amber-50 p-3 rounded-lg border border-amber-100 whitespace-pre-line">
+                          {{ viewingDetalleRecord()?.['novedad'] }}
+                        </div>
+                      } @else {
+                        <div class="text-sm text-slate-400 italic">Sin novedad registrada</div>
+                      }
+                      
+                      <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-4 mb-2">Justificación</div>
+                      @if (viewingDetalleRecord()?.['justificacion']) {
+                        <div class="text-sm text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-100 whitespace-pre-line">
+                          {{ viewingDetalleRecord()?.['justificacion'] }}
+                        </div>
+                      } @else {
+                        <div class="text-sm text-slate-400 italic">Sin justificación</div>
+                      }
+                    </div>
+                    
+                    <div class="md:col-span-2">
+                      <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Observaciones</div>
+                      <div class="text-sm text-slate-700 bg-slate-50 p-4 rounded-lg border border-slate-200 whitespace-pre-line font-mono leading-relaxed min-h-[120px]">
+                        {{ viewingDetalleRecord()?.['observaciones'] || 'Sin observaciones registradas.' }}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Section: Validación de Derechos -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden md:col-span-2 xl:col-span-3">
+                  <div class="bg-slate-100 px-4 py-3 border-b border-slate-200 flex items-center gap-2">
+                    <mat-icon class="text-slate-500 text-[18px] w-4 h-4">fact_check</mat-icon>
+                    <h3 class="font-semibold text-slate-800 text-sm">Histórico de Validación de Derechos</h3>
+                  </div>
+                  <div class="p-4">
+                    @if (viewingDetalleRecord()?.['validacion_derechos']) {
+                      <div class="space-y-2">
+                        <div class="flex items-center gap-4 p-3 bg-emerald-50 rounded-lg border border-emerald-200 text-sm">
+                          <div class="flex-1">
+                            <span class="font-bold text-emerald-800">{{ getDerechosEstado(viewingDetalleRecord()) }}</span>
+                            <div class="text-[10px] text-emerald-600">Autorizado por: {{ viewingDetalleRecord()?.['validacion_derechos'] }}</div>
+                          </div>
+                          <div class="text-xs text-emerald-600 font-mono">{{ viewingDetalleRecord()?.['validacion_derechos_fecha'] | date:'dd/MM/yyyy hh:mm:ss a' }}</div>
+                        </div>
+                      </div>
+                    } @else {
+                      <div class="text-sm text-slate-400 italic">Sin validación de derechos registrada.</div>
+                    }
+                  </div>
+                </div>
+
+                <!-- Section: Todos los demás campos -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden md:col-span-2 xl:col-span-3">
+                  <div class="bg-slate-100 px-4 py-3 border-b border-slate-200 flex items-center gap-2">
+                    <mat-icon class="text-slate-500 text-[18px] w-4 h-4">data_object</mat-icon>
+                    <h3 class="font-semibold text-slate-800 text-sm">Toda la Información (Datos Crudos)</h3>
+                  </div>
+                  <div class="p-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                      @for (key of getRecordKeys(viewingDetalleRecord()!); track key) {
+                        <div class="bg-slate-50 p-3 rounded-lg border border-slate-100 hover:border-emerald-200 transition-colors">
+                          <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 truncate" [title]="formatKey(key)">{{ formatKey(key) }}</div>
+                          <div class="text-sm text-slate-800 font-medium break-words whitespace-pre-wrap">{{ viewingDetalleRecord()?.[key] || '-' }}</div>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+    @if (viewingGiroCamaRecord()) {
+      <div class="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-lg w-full max-w-2xl h-[80vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+          <div class="bg-slate-50 border-b border-slate-200 px-6 py-4 flex justify-between items-center shrink-0">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center">
+                <mat-icon class="text-[20px] w-5 h-5">history</mat-icon>
+              </div>
+              <div>
+                <h2 class="text-lg font-bold text-slate-800">Historial de Cambios</h2>
+                <div class="text-xs text-slate-500">{{ viewingGiroCamaRecord()?.['nombre'] }}</div>
+              </div>
+            </div>
+            <button (click)="closeGiroCamaModal()" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200 text-slate-500 transition-colors">
+              <mat-icon class="text-[20px] w-5 h-5">close</mat-icon>
+            </button>
+          </div>
+          
+          <div class="bg-slate-50 border-b border-slate-200 px-6 py-4">
+            <div class="inline-flex bg-slate-200/50 p-1 rounded-lg overflow-x-auto max-w-full">
+              <button (click)="historialTab.set('giro_cama')" 
+                      [ngClass]="historialTab() === 'giro_cama' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'" 
+                      class="px-4 py-1.5 text-sm font-medium rounded-md transition-all whitespace-nowrap">
+                Giro Cama
+              </button>
+              <button (click)="historialTab.set('gestion_estancia')" 
+                      [ngClass]="historialTab() === 'gestion_estancia' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'" 
+                      class="px-4 py-1.5 text-sm font-medium rounded-md transition-all whitespace-nowrap">
+                Gestión Estancia
+              </button>
+              <button (click)="historialTab.set('aut_estancia')" 
+                      [ngClass]="historialTab() === 'aut_estancia' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'" 
+                      class="px-4 py-1.5 text-sm font-medium rounded-md transition-all whitespace-nowrap">
+                Aut. Estancia
+              </button>
+              <button (click)="historialTab.set('observaciones')" 
+                      [ngClass]="historialTab() === 'observaciones' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'" 
+                      class="px-4 py-1.5 text-sm font-medium rounded-md transition-all whitespace-nowrap">
+                Observaciones
+              </button>
+            </div>
+          </div>
+
+          <div class="p-6 overflow-auto flex-1 bg-white">
+            @if (historialCambios().length > 0) {
+              <div class="grid grid-cols-3 gap-4 p-3 bg-slate-50 rounded-lg mb-4 border border-slate-200 items-center">
+                <div><span class="text-slate-400 font-bold uppercase text-[10px] mr-1">Ingreso:</span> <span class="text-xs font-medium text-slate-700">{{ historialCambios()[0].ingreso }}</span></div>
+                <div><span class="text-slate-400 font-bold uppercase text-[10px] mr-1">Documento:</span> <span class="text-xs font-medium text-slate-700">{{ historialCambios()[0].hc }}</span></div>
+                <div class="truncate" title="{{ viewingGiroCamaRecord()?.['entidad'] }}"><span class="text-slate-400 font-bold uppercase text-[10px] mr-1">EPS:</span> <span class="text-xs font-medium text-slate-700">{{ viewingGiroCamaRecord()?.['entidad'] }}</span></div>
+              </div>
+              
+              @if (historialTab() === 'giro_cama') {
+                @if (groupedHistorial().length > 0) {
+                  <table class="w-full text-xs text-left text-slate-700">
+                    <thead class="text-xs text-white uppercase bg-slate-800">
+                      <tr>
+                        <th scope="col" class="px-2 py-2">CAMA</th>
+                        <th scope="col" class="px-2 py-2">ÁREA</th>
+                        <th scope="col" class="px-2 py-2">ÁREA</th>
+                        <th scope="col" class="px-2 py-2">CAMA</th>
+                        <th scope="col" class="px-2 py-2">FECHA</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (group of groupedHistorial(); track group.fecha; let isLast = $last) {
+                        <tr class="bg-white border-b hover:bg-slate-50 transition-colors">
+                          <td class="px-2 py-2 font-medium">{{ group.cama_antes }}</td>
+                          <td class="px-2 py-2 text-slate-500">{{ group.area_antes }}</td>
+                          <td class="px-2 py-2 text-slate-500">{{ group.area_nueva }}</td>
+                          <td class="px-2 py-2 font-medium">
+                            <span [ngClass]="isLast ? 'bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded' : ''">{{ group.cama_nueva }}</span>
+                          </td>
+                          <td class="px-2 py-2 text-slate-400">{{ group.fecha | date:'dd/MM/yyyy HH:mm' }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                } @else {
+                  <div class="text-center py-8 text-slate-500">
+                    <p>No hay historial de cambios de Giro Cama.</p>
+                  </div>
+                }
+              }
+
+              @if (historialTab() === 'gestion_estancia') {
+                @if (historialGestionEstancia().length > 0) {
+                  <table class="w-full text-xs text-left text-slate-700">
+                    <thead class="text-xs text-white uppercase bg-slate-800">
+                      <tr>
+                        <th scope="col" class="px-2 py-2">VALOR ANTERIOR</th>
+                        <th scope="col" class="px-2 py-2">VALOR NUEVO</th>
+                        <th scope="col" class="px-2 py-2">FECHA</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (change of historialGestionEstancia(); track change.id; let isFirst = $first) {
+                        <tr class="bg-white border-b hover:bg-slate-50 transition-colors">
+                          <td class="px-2 py-2 text-slate-500 max-w-[200px] truncate" [title]="change.valor_antes">{{ change.valor_antes || '-' }}</td>
+                          <td class="px-2 py-2 font-medium max-w-[200px] truncate" [title]="change.valor_nuevo">
+                            <span [ngClass]="isFirst ? 'bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded' : ''">{{ change.valor_nuevo || '-' }}</span>
+                          </td>
+                          <td class="px-2 py-2 text-slate-400">{{ change.cambiado_en | date:'dd/MM/yyyy HH:mm' }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                } @else {
+                  <div class="text-center py-8 text-slate-500">
+                    <p>No hay historial de cambios de Gestión Estancia.</p>
+                  </div>
+                }
+              }
+
+              @if (historialTab() === 'aut_estancia') {
+                @if (historialAutEstancia().length > 0) {
+                  <table class="w-full text-xs text-left text-slate-700">
+                    <thead class="text-xs text-white uppercase bg-slate-800">
+                      <tr>
+                        <th scope="col" class="px-2 py-2">VALOR ANTERIOR</th>
+                        <th scope="col" class="px-2 py-2">VALOR NUEVO</th>
+                        <th scope="col" class="px-2 py-2">FECHA</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (change of historialAutEstancia(); track change.id; let isFirst = $first) {
+                        <tr class="bg-white border-b hover:bg-slate-50 transition-colors">
+                          <td class="px-2 py-2 text-slate-500 max-w-[200px] truncate" [title]="change.valor_antes">{{ change.valor_antes || '-' }}</td>
+                          <td class="px-2 py-2 font-medium max-w-[200px] truncate" [title]="change.valor_nuevo">
+                            <span [ngClass]="isFirst ? 'bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded' : ''">{{ change.valor_nuevo || '-' }}</span>
+                          </td>
+                          <td class="px-2 py-2 text-slate-400">{{ change.cambiado_en | date:'dd/MM/yyyy HH:mm' }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                } @else {
+                  <div class="text-center py-8 text-slate-500">
+                    <p>No hay historial de cambios de Aut. Estancia.</p>
+                  </div>
+                }
+              }
+
+              @if (historialTab() === 'observaciones') {
+                @if (historialObservaciones().length > 0) {
+                  <div class="space-y-4">
+                    @for (change of historialObservaciones(); track change.id; let isFirst = $first) {
+                      <div class="bg-white border border-slate-200 rounded-lg p-4 shadow-sm">
+                        <div class="flex justify-between items-center mb-2">
+                          <span class="text-xs font-bold text-slate-500">{{ change.cambiado_en | date:'dd/MM/yyyy HH:mm' }}</span>
+                          @if (isFirst) {
+                            <span class="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">Actual</span>
+                          }
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Anterior</div>
+                            <div class="text-sm text-slate-600 bg-slate-50 p-2 rounded border border-slate-100 whitespace-pre-wrap font-mono">{{ change.valor_antes || 'Sin observaciones' }}</div>
+                          </div>
+                          <div>
+                            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Nuevo</div>
+                            <div class="text-sm text-slate-800 bg-blue-50 p-2 rounded border border-blue-100 whitespace-pre-wrap font-mono">{{ change.valor_nuevo || 'Sin observaciones' }}</div>
+                          </div>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                } @else {
+                  <div class="text-center py-8 text-slate-500">
+                    <p>No hay historial de cambios de Observaciones.</p>
+                  </div>
+                }
+              }
+            } @else {
+              <div class="text-center py-8 text-slate-500">
+                <mat-icon class="text-[48px] w-12 h-12 mb-2 opacity-20">history_toggle_off</mat-icon>
+                <p>No hay historial de cambios registrado para este paciente.</p>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    }
+
+  `
+})
+export class ConsolidadoListComponent {
+  // EPS Searchable Dropdown
+  epsSearchText = signal('');
+  showEpsDropdown = signal(false);
+  filteredEps = computed(() => {
+    const search = this.epsSearchText().toLowerCase();
+    return this.entidadesUnicas().filter(eps => eps.toLowerCase().includes(search));
+  });
+
+  onEpsInput(event: Event) {
+    const input = event.target as HTMLInputElement;
+    this.epsSearchText.set(input.value);
+    this.showEpsDropdown.set(true);
+  }
+
+  selectEps(eps: string) {
+    this.epsSearchText.set(eps);
+    this.showEpsDropdown.set(false);
+    if (this.epsSoatInput) {
+      this.epsSoatInput.nativeElement.value = eps;
+    }
+  }
+
+  clearEps() {
+    this.epsSearchText.set('');
+    if (this.epsSoatInput) {
+      this.epsSoatInput.nativeElement.value = '';
+    }
+  }
+  @ViewChild('tipoContratoInput') tipoContratoInput?: ElementRef<HTMLSelectElement>;
+  @ViewChild('entidadInput') entidadInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('epsSoatInput') epsSoatInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('contratoInput') contratoInput?: ElementRef<HTMLSelectElement>;
+  consolidadoService = inject(ConsolidadoService);
+  epsSinConvenioService = inject(EpsSinConvenioService);
+  epsCorteAdministrativoService = inject(EpsCorteAdministrativoService);
+  supabaseService = inject(SupabaseService);
+  registros = input.required<ConsolidadoRecord[]>();
+  view = input<'general' | 'pgp_aic' | 'estancias_nuevas' | 'seguimiento' | 'validacion_derechos'>('general');
+
+  // New structured soportes signals
+  soportesHistory = signal<SoporteEntry[]>([]);
+  isAddingSoporte = signal<boolean>(false);
+  newSoporte = signal<Partial<SoporteEntry>>({
+    autorizacion_recibida: false,
+    soporte_pdf_presente: false
+  });
+
+  editingObsRecord = signal<ConsolidadoRecord | null>(null);
+  editingTramiteRecord = signal<ConsolidadoRecord | null>(null);
+  editingSoportesRecord = signal<ConsolidadoRecord | null>(null);
+  editingGestionRecord = signal<ConsolidadoRecord | null>(null);
+  editingEntidadRecord = signal<ConsolidadoRecord | null>(null);
+  cortesEstancia = signal<CorteEstancia[]>([]);
+  editingDerechosRecord = signal<ConsolidadoRecord | null>(null);
+  derechosError = signal<string | null>(null);
+  loadingHistorialDerechos = signal<boolean>(false);
+  entidadTab = signal<'datos' | 'cortes'>('datos');
+  entidadInputValue = signal<string>('');
+  contratoInputValue = signal<string>('');
+  tipoContratoInputValue = signal<string>('');
+  autInputValue = signal<string>('NO');
+  gestionInputValue = signal<string>('');
+  viewingDetalleRecord = signal<ConsolidadoRecord | null>(null);
+  viewingGiroCamaRecord = signal<ConsolidadoRecord | null>(null);
+  historialCambios = signal<HistorialCambio[]>([]);
+  historialTab = signal<'giro_cama' | 'gestion_estancia' | 'aut_estancia' | 'observaciones'>('giro_cama');
+  derechosTab = signal<'validacion' | 'historial'>('validacion');
+  derechosEstadoInput = signal<string>('Activo');
+  derechosAutorizadorInput = signal<string>('');
+  
+  historialDerechos = computed(() => {
+    const record = this.editingDerechosRecord();
+    if (!record) return [];
+    
+    const histStr = record['historial_derechos'] as string;
+    if (histStr && histStr.trim().startsWith('[')) {
+      try {
+        return JSON.parse(histStr);
+      } catch {
+        return [];
+      }
+    }
+    
+    // Fallback to historialCambios if historial_derechos is empty
+    return this.historialCambios()
+      .filter(c => c.campo === 'validacion_derechos' || c.campo === 'derechos_paciente' || c.campo === 'valdiacion_derechos')
+      .map(c => {
+        let estado = '';
+        if (c.campo === 'derechos_paciente') {
+          estado = this.parseDerechosHistory(c.valor_nuevo);
+        } else if (c.campo === 'validacion_derechos' || c.campo === 'valdiacion_derechos') {
+          estado = 'Actualizado'; // Or some generic status
+        }
+        
+        return {
+          estado: estado || c.valor_nuevo,
+          fecha: c.cambiado_en,
+          autorizador: c.campo === 'validacion_derechos' || c.campo === 'valdiacion_derechos' ? c.valor_nuevo : 'N/A',
+          cambiado_en: c.cambiado_en // keep for compatibility
+        };
+      })
+      .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+  });
+
+  parseDerechosHistory(valor: string): string {
+    if (!valor || valor === 'null') return '';
+    try {
+      const parsed = JSON.parse(valor);
+      return parsed?.estado || valor;
+    } catch {
+      return valor;
+    }
+  }
+
+  getDerechosEstado(record: ConsolidadoRecord | null): string {
+    if (!record) return 'Validado';
+    
+    // Try new column first (with typo as requested)
+    if (record['valdiacion_derechos']) {
+      return record['valdiacion_derechos'] as string;
+    }
+    
+    if (!record['derechos_paciente']) return 'Validado';
+    try {
+      const parsed = typeof record['derechos_paciente'] === 'string' ? JSON.parse(record['derechos_paciente']) : record['derechos_paciente'];
+      return parsed?.estado || 'Validado';
+    } catch {
+      return 'Validado';
+    }
+  }
+
+  async openDerechosModal(record: ConsolidadoRecord) {
+    this.derechosError.set(null);
+    this.derechosTab.set('validacion');
+    this.derechosEstadoInput.set(this.getDerechosEstado(record));
+    // Use 'autorizador' first, then fallback to 'validacion_derechos'
+    this.derechosAutorizadorInput.set((record['autorizador'] || record['validacion_derechos']) as string || '');
+    this.editingDerechosRecord.set(record);
+    this.historialCambios.set([]);
+    this.loadingHistorialDerechos.set(true);
+    try {
+      const hc = record['hc'] as string;
+      if (hc) {
+        const historial = await this.consolidadoService.getHistorialCambios(hc);
+        this.historialCambios.set(historial);
+      }
+    } catch (error) {
+      console.error('Error fetching historial:', error);
+    } finally {
+      this.loadingHistorialDerechos.set(false);
+    }
+  }
+
+  closeDerechosModal() {
+    this.editingDerechosRecord.set(null);
+    this.derechosError.set(null);
+  }
+
+  private getBogotaISOString(): string {
+    const now = new Date();
+    const bogotaFormatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Bogota',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hourCycle: 'h23'
+    });
+    
+    const parts = bogotaFormatter.formatToParts(now);
+    const getPart = (type: string) => parts.find(p => p.type === type)?.value || '';
+    
+    return `${getPart('year')}-${getPart('month')}-${getPart('day')}T${getPart('hour')}:${getPart('minute')}:${getPart('second')}-05:00`;
+  }
+
+  private getBogotaShortDate(): string {
+    return new Date().toLocaleString('es-CO', { 
+      timeZone: 'America/Bogota',
+      dateStyle: 'short', 
+      timeStyle: 'short' 
+    });
+  }
+
+  private getBogotaDateOnly(): string {
+    const now = new Date();
+    const bogotaFormatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Bogota',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    const parts = bogotaFormatter.formatToParts(now);
+    const getPart = (type: string) => parts.find(p => p.type === type)?.value || '';
+    return `${getPart('year')}-${getPart('month')}-${getPart('day')}`;
+  }
+
+  async saveDerechos() {
+    const estado = this.derechosEstadoInput();
+    const autorizador = this.derechosAutorizadorInput();
+    
+    if (!autorizador || !autorizador.trim()) {
+      this.derechosError.set('Por favor, ingrese el nombre del autorizador.');
+      return;
+    }
+
+    const record = this.editingDerechosRecord();
+    if (!record || !record.id) {
+      this.derechosError.set('Error: No se pudo identificar el registro para guardar.');
+      return;
+    }
+
+    this.derechosError.set(null);
+    const fechaActual = this.getBogotaISOString();
+
+    this.saving.set(true);
+    try {
+      const newAutorizador = autorizador.trim();
+      
+      // Manage History
+      let currentHistory: unknown[] = [];
+      const histStr = record['historial_derechos'] as string;
+      if (histStr && histStr.trim().startsWith('[')) {
+        try {
+          currentHistory = JSON.parse(histStr) as unknown[];
+        } catch {
+          currentHistory = [];
+        }
+      }
+
+      const newEntry = {
+        estado: estado,
+        fecha: fechaActual,
+        autorizador: newAutorizador
+      };
+
+      const updatedHistory = [newEntry, ...currentHistory];
+
+      await this.consolidadoService.updateRegistro(record.id, {
+        valdiacion_derechos: estado, // Typo as requested
+        valdiacion_derechos_fecha: fechaActual, // Typo as requested
+        autorizador: newAutorizador,
+        historial_derechos: JSON.stringify(updatedHistory),
+        // Keep old fields for backward compatibility if needed
+        validacion_derechos: newAutorizador,
+        validacion_derechos_fecha: fechaActual,
+        derechos_paciente: { estado: estado }
+      });
+
+      // Insert history for tracking in historial_cambios too
+      await this.consolidadoService.insertHistorialCambio({
+        tabla: 'base_hoy',
+        sourcerow: Number(record.id),
+        campo: 'valdiacion_derechos',
+        valor_antes: record.valdiacion_derechos || '',
+        valor_nuevo: estado,
+        cambiado_en: fechaActual,
+        hc: record.hc || '',
+        ingreso: record.ingreso || ''
+      });
+
+      this.closeDerechosModal();
+    } catch (e: unknown) {
+      const errorMsg = e instanceof Error ? e.message : String(e);
+      if (errorMsg.includes('PGRST204') || errorMsg.includes('valdiacion_derechos') || errorMsg.includes('historial_derechos') || errorMsg.includes('22007') || errorMsg.includes('type time')) {
+        this.derechosError.set('Error de Base de Datos: Las columnas nuevas no existen o tienen el tipo incorrecto. Ejecuta este SQL en Supabase: ' +
+          'ALTER TABLE base_hoy ADD COLUMN IF NOT EXISTS valdiacion_derechos text; ' +
+          'ALTER TABLE base_hoy ADD COLUMN IF NOT EXISTS valdiacion_derechos_fecha timestamp with time zone; ' +
+          'ALTER TABLE base_hoy ADD COLUMN IF NOT EXISTS historial_derechos text; ' +
+          'ALTER TABLE base_hoy ADD COLUMN IF NOT EXISTS autorizador text; ' +
+          'ALTER TABLE base_hoy ALTER COLUMN historial_derechos TYPE text; ' +
+          'ALTER TABLE base_hoy ALTER COLUMN valdiacion_derechos_fecha TYPE timestamp with time zone USING valdiacion_derechos_fecha::timestamp with time zone; ' +
+          'y luego presiona "Reload Schema" en la sección API.');
+      } else {
+        this.derechosError.set(errorMsg);
+      }
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
+  async anularDerechos() {
+    const record = this.editingDerechosRecord();
+    if (!record || !record.id) return;
+
+    this.derechosError.set(null);
+    const fechaActual = this.getBogotaISOString();
+
+    this.saving.set(true);
+    try {
+      // Manage History
+      let currentHistory: unknown[] = [];
+      const histStr = record['historial_derechos'] as string;
+      if (histStr && histStr.trim().startsWith('[')) {
+        try {
+          currentHistory = JSON.parse(histStr) as unknown[];
+        } catch {
+          currentHistory = [];
+        }
+      }
+
+      const newEntry = {
+        estado: 'Anulado',
+        fecha: fechaActual,
+        autorizador: 'SISTEMA (ANULACIÓN)'
+      };
+
+      const updatedHistory = [newEntry, ...currentHistory];
+
+      // Update record to clear validation but keep trace in history
+      await this.consolidadoService.updateRegistro(record.id, {
+        valdiacion_derechos: 'Anulado',
+        valdiacion_derechos_fecha: null,
+        historial_derechos: JSON.stringify(updatedHistory),
+        derechos_paciente: { estado: 'Anulado' },
+        validacion_derechos: null,
+        validacion_derechos_fecha: null,
+        autorizador: null
+      });
+
+      // Insert history for the annulment
+      await this.consolidadoService.insertHistorialCambio({
+        tabla: 'base_hoy',
+        sourcerow: Number(record.id),
+        campo: 'valdiacion_derechos',
+        valor_antes: record.valdiacion_derechos || '',
+        valor_nuevo: 'Anulado',
+        cambiado_en: fechaActual,
+        hc: record.hc || '',
+        ingreso: record.ingreso || ''
+      });
+
+      this.closeDerechosModal();
+    } catch (error: unknown) {
+      console.error('Error annulling derechos:', error);
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      if (errorMsg.includes('PGRST204') || errorMsg.includes('valdiacion_derechos') || errorMsg.includes('historial_derechos') || errorMsg.includes('22007') || errorMsg.includes('type time')) {
+        this.derechosError.set('Error de Base de Datos: Las columnas nuevas no existen o tienen el tipo incorrecto. Ejecuta este SQL en Supabase: ' +
+          'ALTER TABLE base_hoy ADD COLUMN IF NOT EXISTS valdiacion_derechos text; ' +
+          'ALTER TABLE base_hoy ADD COLUMN IF NOT EXISTS valdiacion_derechos_fecha timestamp with time zone; ' +
+          'ALTER TABLE base_hoy ADD COLUMN IF NOT EXISTS historial_derechos text; ' +
+          'ALTER TABLE base_hoy ADD COLUMN IF NOT EXISTS autorizador text; ' +
+          'ALTER TABLE base_hoy ALTER COLUMN historial_derechos TYPE text; ' +
+          'ALTER TABLE base_hoy ALTER COLUMN valdiacion_derechos_fecha TYPE timestamp with time zone USING valdiacion_derechos_fecha::timestamp with time zone; ' +
+          'y luego presiona "Reload Schema" en la sección API.');
+      } else {
+        this.derechosError.set('Error al anular la validación.');
+      }
+    } finally {
+      this.saving.set(false);
+    }
+  }
+  
+  historialGestionEstancia = computed(() => this.historialCambios().filter(c => c.campo === 'gestion_estancia').sort((a, b) => new Date(b.cambiado_en).getTime() - new Date(a.cambiado_en).getTime()));
+  historialAutEstancia = computed(() => this.historialCambios().filter(c => c.campo === 'aut_estancia').sort((a, b) => new Date(b.cambiado_en).getTime() - new Date(a.cambiado_en).getTime()));
+  historialObservaciones = computed(() => this.historialCambios().filter(c => c.campo === 'observaciones').sort((a, b) => new Date(b.cambiado_en).getTime() - new Date(a.cambiado_en).getTime()));
+
+  groupedHistorial = computed(() => {
+    const changes = this.historialCambios().filter(c => c.campo === 'area' || c.campo === 'cama');
+    const sortedChanges = [...changes].sort((a, b) => new Date(a.cambiado_en).getTime() - new Date(b.cambiado_en).getTime());
+
+    const groups: Record<string, {
+      fecha: string;
+      cama_antes: string;
+      area_antes: string;
+      area_nueva: string;
+      cama_nueva: string;
+    }> = {};
+
+    let currentArea = '';
+    let currentCama = '';
+
+    const firstArea = sortedChanges.find(c => c.campo === 'area');
+    if (firstArea) currentArea = firstArea.valor_antes;
+
+    const firstCama = sortedChanges.find(c => c.campo === 'cama');
+    if (firstCama) currentCama = firstCama.valor_antes;
+
+    sortedChanges.forEach(c => {
+      const dateObj = new Date(c.cambiado_en);
+      const key = `${dateObj.getFullYear()}-${dateObj.getMonth()}-${dateObj.getDate()}-${dateObj.getHours()}-${dateObj.getMinutes()}`;
+      
+      if (!groups[key]) {
+        groups[key] = {
+          fecha: c.cambiado_en,
+          cama_antes: currentCama,
+          area_antes: currentArea,
+          area_nueva: currentArea,
+          cama_nueva: currentCama
+        };
+      }
+
+      if (c.campo === 'cama') {
+        groups[key].cama_antes = c.valor_antes;
+        groups[key].cama_nueva = c.valor_nuevo;
+        currentCama = c.valor_nuevo;
+      }
+      if (c.campo === 'area') {
+        groups[key].area_antes = c.valor_antes;
+        groups[key].area_nueva = c.valor_nuevo;
+        currentArea = c.valor_nuevo;
+      }
+    });
+
+    return Object.values(groups).sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
+  });
+
+  entidadesUnicas = computed(() => {
+    const records = this.consolidadoService.allRegistros();
+    const entidades = new Set<string>();
+    records.forEach(r => {
+      if (r['entidad']) {
+        entidades.add(String(r['entidad']).trim());
+      }
+      if (r['eps_soat']) {
+        entidades.add(String(r['eps_soat']).trim());
+      }
+    });
+    return Array.from(entidades).filter(e => e !== '').sort();
+  });
+
+  getCortesEstancia(record: ConsolidadoRecord): CorteEstancia[] {
+    try {
+      if (record['cortes_estancia']) {
+        return JSON.parse(String(record['cortes_estancia']));
+      }
+    } catch {
+      return [];
+    }
+    // Fallback: if there's an existing aut_estancia_entidad but no cortes_estancia, we can return it as a legacy corte
+    if (record['aut_estancia_entidad'] || record['fecha_egreso_entidad']) {
+      return [{
+        id: 'legacy',
+        tipo: 'Legado',
+        autorizacion: record['aut_estancia_entidad'] || '',
+        fecha_corte: record['fecha_egreso_entidad'] || '',
+        fecha_registro: '',
+        base_hoy_id: Number(record.id)
+      }];
+    }
+    return [];
+  }
+
+  async addCorte(tipo: string, autorizacion: string, fecha_corte: string) {
+    if (!autorizacion || !fecha_corte) return;
+    const record = this.editingEntidadRecord();
+    if (!record || !record.id) return;
+    
+    const newCorte: CorteEstancia = {
+      id: crypto.randomUUID(),
+      base_hoy_id: Number(record.id),
+      tipo,
+      autorizacion,
+      fecha_corte,
+      fecha_registro: this.getBogotaISOString()
+    };
+    
+    const cortes = this.getCortesEstancia(record).filter(c => c.id !== 'legacy');
+    cortes.push(newCorte);
+    
+    this.saving.set(true);
+    try {
+      const updates = {
+        cortes_estancia: JSON.stringify(cortes),
+        aut_estancia_entidad: autorizacion,
+        fecha_egreso_entidad: fecha_corte
+      };
+      await this.consolidadoService.updateRegistro(record.id, updates);
+      // Update local record
+      this.editingEntidadRecord.set({
+        ...record,
+        ...updates
+      });
+    } catch (e) {
+      console.error(e);
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
+  // Eliminar el método deleteCorte duplicado que estaba aquí (líneas 1973-2000)
+
+  tipoCorteSeleccionado = signal('Direccionamiento');
+  otroTipoCorte = signal('');
+  tramiteOption = signal<string>('');
+  tramiteAutorizador = signal<string>('');
+  saving = signal(false);
+
+  parsedTramites = computed(() => {
+    const record = this.editingTramiteRecord();
+    if (!record) return [];
+    try {
+      const hist = record['nombre_notif'];
+      let parsed: TramiteHistory[] = [];
+      if (typeof hist === 'string' && hist.trim().startsWith('[')) {
+        parsed = JSON.parse(hist) as TramiteHistory[];
+      } else if (Array.isArray(hist)) {
+        parsed = hist as TramiteHistory[];
+      } else if (typeof hist === 'string' && hist.trim().length > 0) {
+        parsed = [{
+          fecha: record['updated_at'] ? new Date(record['updated_at'] as string).toLocaleString('es-CO', { timeZone: 'America/Bogota', dateStyle: 'short', timeStyle: 'short' }) : '',
+          tipo: (record['proceso_notif'] as string) || 'Otro',
+          nota: hist
+        }];
+      }
+      
+      return parsed.map(entry => {
+        const match = (entry.nota as string)?.match(/~~(.*?)~~\s*\(Eliminado por (.*?)\)/);
+        if (match) {
+          return { ...entry, nota: match[1], isDeleted: true, deletedBy: match[2] };
+        }
+        return entry;
+      });
+    } catch {
+      return [];
+    }
+  });
+
+  parsedObs = computed(() => {
+    const record = this.editingObsRecord();
+    if (!record) return [];
+    const obsStr = String(record['observaciones'] || '');
+    return obsStr.split('\n').filter(l => l.trim().length > 0).map(line => {
+      // Match pattern: ~~text~~ (Eliminado por User)
+      const match = line.match(/~~(.*?)~~\s*\(Eliminado por (.*?)\)/);
+      if (match) {
+        return { raw: line, text: match[1], isDeleted: true, deletedBy: match[2] };
+      }
+      return { raw: line, text: line, isDeleted: false };
+    });
+  });
+
+  hasActiveFilters = computed(() => {
+    return !!this.consolidadoService.searchQuery() || this.registros().length !== this.consolidadoService.allRegistros().length;
+  });
+
+  filteredRegistros = computed<MappedConsolidadoRecord[]>(() => {
+    const allRegistros = this.registros();
+    
+    // Sort by EPS (entidad) and pre-calculate all expensive values
+    const sorted = [...allRegistros].sort((a, b) => {
+      const entA = String(a['entidad'] || '').toLowerCase();
+      const entB = String(b['entidad'] || '').toLowerCase();
+      return entA.localeCompare(entB);
+    });
+
+    return sorted.map(r => {
+      const hasCortesArray = this.getCortesEstancia(r);
+      const hasCortes = hasCortesArray.length > 0 || r['aut_estancia'] === 'SI';
+      const diasCorte = this.calcularDiasCorte(r);
+      const derechosEstado = this.getDerechosEstado(r);
+      const visibleObs = this.getVisibleObservaciones(r['observaciones']);
+      const latestTramite = this.getLatestTramiteNota(r['nombre_notif']);
+      const isSinConvenio = !!(r['entidad'] && this.epsSinConvenioService.isSinConvenio(r['entidad'].toString()));
+      const isCorteAdmin = this.epsCorteAdministrativoService.isCorteAdministrativo(this.getStringValue(r['entidad']));
+      const hasTramiteHistory = this.hasTramiteHistory(r);
+      const latestSoporte = this.getLatestSoporte(r);
+
+      return {
+        ...r,
+        _hasCortes: hasCortes,
+        _diasCorte: diasCorte,
+        _derechosEstado: derechosEstado,
+        _visibleObs: visibleObs,
+        _latestTramite: latestTramite,
+        _isSinConvenio: isSinConvenio,
+        _isCorteAdmin: isCorteAdmin,
+        _hasTramiteHistory: hasTramiteHistory,
+        _latestSoporte: latestSoporte
+      } as MappedConsolidadoRecord;
+    });
+  });
+
+  toNumber(val: unknown): number {
+    return Number(val) || 0;
+  }
+
+  getStringValue(val: unknown): string {
+    return val ? String(val) : '';
+  }
+
+  copyToClipboard(text: string, event: Event) {
+    event.stopPropagation();
+    navigator.clipboard.writeText(text).then(() => {
+      console.log('Copiado al portapapeles:', text);
+    });
+  }
+
+  openObsModal(record: ConsolidadoRecord) {
+    this.editingObsRecord.set(record);
+  }
+
+  closeObsModal() {
+    this.editingObsRecord.set(null);
+  }
+
+  async saveObs(newNote: string) {
+    if (!newNote.trim()) return;
+    
+    const record = this.editingObsRecord();
+    if (!record || !record.id) return;
+
+    this.saving.set(true);
+    try {
+      const currentObs = String(record['observaciones'] || '').trim();
+      
+      // Calculate next number
+      const lines = currentObs.split('\n').filter(l => l.trim().length > 0);
+      let nextNum = 1;
+      if (lines.length > 0) {
+        // Try to find the last number
+        const lastLine = lines[lines.length - 1];
+        const match = lastLine.match(/^(\d+)\./);
+        if (match) {
+          nextNum = parseInt(match[1], 10) + 1;
+        } else {
+          nextNum = lines.length + 1;
+        }
+      }
+
+      const now = new Date();
+      const bogotaFormatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/Bogota',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23'
+      });
+      const parts = bogotaFormatter.formatToParts(now);
+      const getPart = (type: string) => parts.find(p => p.type === type)?.value || '';
+      
+      const dateStr = `${getPart('year')}-${getPart('month')}-${getPart('day')} ${getPart('hour')}:${getPart('minute')}`;
+
+      const formattedNote = `${nextNum}. ${dateStr} - ${newNote.trim()}`;
+      const updatedObs = currentObs ? `${currentObs}\n${formattedNote}` : formattedNote;
+
+      await this.consolidadoService.updateRegistro(record.id, { observaciones: updatedObs });
+      this.closeObsModal();
+    } catch (error) {
+      console.error('Error saving observation:', error);
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
+  async deleteObs(index: number) {
+    const record = this.editingObsRecord();
+    if (!record || !record.id) return;
+
+    this.saving.set(true);
+    try {
+      const obsStr = String(record['observaciones'] || '');
+      const lines = obsStr.split('\n').filter(l => l.trim().length > 0);
+      
+      if (index >= 0 && index < lines.length) {
+        const lineToDel = lines[index];
+        // In a real app, we would get the current user's name from an auth service.
+        // For now, we use a generic placeholder or prompt.
+        const userName = 'Usuario Actual'; 
+        lines[index] = `~~${lineToDel}~~ (Eliminado por ${userName})`;
+        
+        const updatedObs = lines.join('\n');
+        await this.consolidadoService.updateRegistro(record.id, { observaciones: updatedObs });
+        
+        // Update local record so modal updates immediately
+        this.editingObsRecord.set({ ...record, observaciones: updatedObs });
+      }
+    } catch (error) {
+      console.error('Error deleting observation:', error);
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
+  getLatestTramiteNota(val: unknown): string {
+    if (!val) return '';
+    try {
+      if (typeof val === 'string' && val.trim().startsWith('[')) {
+        const parsed = JSON.parse(val);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const active = parsed.filter(p => !p.nota.includes('~~'));
+          if (active.length > 0) return active[0].nota;
+          return '';
+        }
+      } else if (typeof val === 'string' && val.trim().includes('~~')) {
+        return '';
+      }
+    } catch {
+      // Fallback to string
+    }
+    return String(val);
+  }
+
+  activeTramites = computed(() => this.parsedTramites().filter(t => !t.isDeleted));
+  deletedTramites = computed(() => this.parsedTramites().filter(t => t.isDeleted));
+
+  getVisibleObservaciones(obs: unknown): string {
+    if (!obs) return 'Sin observaciones';
+    const lines = String(obs).split('\n');
+    const visibleLines = lines.filter(l => !l.match(/~~(.*?)~~\s*\(Eliminado por (.*?)\)/) && l.trim().length > 0);
+    return visibleLines.length > 0 ? visibleLines.join('\n') : 'Sin observaciones';
+  }
+
+  extractDays(val: unknown): string {
+    if (!val) return '';
+    if (val === 'Integral - No se gestiona') return '0';
+    const match = String(val).match(/\d+/);
+    return match ? match[0] : '';
+  }
+
+  async openGiroCamaModal(record: ConsolidadoRecord) {
+    this.viewingGiroCamaRecord.set(record);
+    this.historialCambios.set([]);
+    try {
+      const hc = record['hc'] as string;
+      if (hc) {
+        const historial = await this.consolidadoService.getHistorialCambios(hc);
+        this.historialCambios.set(historial);
+      }
+    } catch (error) {
+      console.error('Error fetching historial:', error);
+    }
+  }
+
+  closeGiroCamaModal() {
+    this.viewingGiroCamaRecord.set(null);
+  }
+
+  getHistorialCambios(record: ConsolidadoRecord | null): HistorialCambio[] {
+    if (!record) return [];
+    
+    console.log('--- DEBUG HISTORIAL ---');
+    console.log('nombre_notif:', record['nombre_notif']);
+    console.log('historial_cambios:', record['historial_cambios']);
+    
+    // Try to find where the history is
+    const hist = record['historial_cambios'] || record['nombre_notif'];
+    
+    let arr: HistorialCambio[] = [];
+    
+    if (Array.isArray(hist)) {
+      arr = hist;
+    } else if (typeof hist === 'string') {
+      try {
+        const parsed = JSON.parse(hist);
+        arr = Array.isArray(parsed) ? parsed : [];
+      } catch {
+        console.log('Failed to parse history string');
+        arr = [];
+      }
+    }
+    
+    console.log('Parsed history:', arr);
+    return arr.filter(item => typeof item === 'object' && item !== null);
+  }
+
+  hasTramiteHistory(record: ConsolidadoRecord): boolean {
+    try {
+      const hist = record['nombre_notif'];
+      if (typeof hist === 'string' && hist.trim().startsWith('[')) {
+        return JSON.parse(hist).length > 0;
+      }
+      if (Array.isArray(hist)) {
+        return hist.length > 0;
+      }
+      if (typeof hist === 'string' && hist.trim().length > 0) {
+        return true;
+      }
+    } catch {
+      return false;
+    }
+    return false;
+  }
+
+  tramiteTab = signal<'activos' | 'historico'>('activos');
+
+  openTramiteModal(record: ConsolidadoRecord) {
+    this.editingTramiteRecord.set(record);
+    this.tramiteOption.set('');
+    this.tramiteTab.set('activos');
+    this.tramiteAutorizador.set(record.autorizador || '');
+  }
+
+  closeTramiteModal() {
+    this.editingTramiteRecord.set(null);
+    this.tramiteOption.set('');
+  }
+
+  openSoportesModal(r: ConsolidadoRecord) {
+    const current = String(r['soportes'] || '');
+    let history: SoporteEntry[] = [];
+    
+    try {
+      if (current.trim().startsWith('[')) {
+        history = JSON.parse(current);
+      } else if (current.trim()) {
+        // Migration: if it was a simple string, convert to first entry
+        history = [{
+          id: crypto.randomUUID(),
+          fecha_solicitud: this.getBogotaDateOnly(),
+          autorizacion_recibida: true,
+          soporte_pdf_presente: true
+        }];
+      }
+    } catch (e) {
+      console.error('Error parsing soportes history:', e);
+    }
+
+    this.soportesHistory.set(history);
+    this.isAddingSoporte.set(history.length === 0);
+    this.resetNewSoporte();
+    this.editingSoportesRecord.set(r);
+  }
+
+  resetNewSoporte() {
+    this.newSoporte.set({
+      fecha_solicitud: this.getBogotaDateOnly(),
+      autorizacion_recibida: false,
+      soporte_pdf_presente: false
+    });
+  }
+
+  addSoporteEntry() {
+    const entry: SoporteEntry = {
+      id: crypto.randomUUID(),
+      fecha_solicitud: this.newSoporte().fecha_solicitud || this.getBogotaDateOnly(),
+      periodo_desde: this.newSoporte().periodo_desde,
+      periodo_hasta: this.newSoporte().periodo_hasta,
+      autorizacion_recibida: !!this.newSoporte().autorizacion_recibida,
+      soporte_pdf_presente: !!this.newSoporte().soporte_pdf_presente,
+      fecha_registro_soporte: this.getBogotaISOString()
+    };
+
+    this.soportesHistory.update(prev => [entry, ...prev]);
+    this.isAddingSoporte.set(false);
+    this.resetNewSoporte();
+  }
+
+  removeSoporteEntry(id: string) {
+    this.soportesHistory.update(prev => prev.filter(e => e.id !== id));
+  }
+
+  updateNewSoporteField(field: keyof SoporteEntry, value: string) {
+    this.newSoporte.update(s => ({ ...s, [field]: value }));
+  }
+
+  getLatestSoporte(r: ConsolidadoRecord): SoporteEntry | null {
+    const current = String(r['soportes'] || '');
+    try {
+      if (current.trim().startsWith('[')) {
+        const history = JSON.parse(current) as SoporteEntry[];
+        return history.length > 0 ? history[0] : null;
+      }
+    } catch {
+      // Not JSON
+    }
+    return null;
+  }
+
+  closeSoportesModal() {
+    this.editingSoportesRecord.set(null);
+    this.soportesHistory.set([]);
+    this.isAddingSoporte.set(false);
+    this.resetNewSoporte();
+  }
+
+  async saveSoportes() {
+    const record = this.editingSoportesRecord();
+    if (!record || !record.id) return;
+
+    this.saving.set(true);
+    try {
+      const soportes = JSON.stringify(this.soportesHistory());
+      await this.consolidadoService.updateRegistro(record.id, { soportes });
+      this.closeSoportesModal();
+    } catch (error) {
+      console.error('Error saving soportes:', error);
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
+  async saveTramite(tipoSelect: string, otroTipo: string | undefined, nota: string, autorizador?: string) {
+    const record = this.editingTramiteRecord();
+    if (!record || !record.id) return;
+
+    const tipoFinal = tipoSelect === 'Otro' ? (otroTipo || 'Otro') : tipoSelect;
+    
+    if (!tipoFinal || !nota.trim()) return;
+
+    this.saving.set(true);
+    try {
+      let rawHistory: unknown[] = [];
+      const histStr = record['nombre_notif'];
+      if (typeof histStr === 'string' && histStr.trim().startsWith('[')) {
+        try {
+          rawHistory = JSON.parse(histStr);
+        } catch {
+          rawHistory = [];
+        }
+      } else if (Array.isArray(histStr)) {
+        rawHistory = [...histStr];
+      } else if (typeof histStr === 'string' && histStr.trim().length > 0) {
+        rawHistory = [{
+          fecha: record['updated_at'] ? new Date(record['updated_at'] as string).toLocaleString('es-CO', { timeZone: 'America/Bogota', dateStyle: 'short', timeStyle: 'short' }) : '',
+          tipo: record['proceso_notif'] || 'Otro',
+          nota: histStr
+        }];
+      }
+
+      const newEntry = {
+        fecha: this.getBogotaShortDate(),
+        tipo: tipoFinal,
+        nota: nota.trim()
+      };
+      
+      const updatedHistory = [newEntry, ...rawHistory];
+
+      const updateData: Partial<ConsolidadoRecord> = {};
+
+      // If it's ACTIVO, we update the validation of rights and skip the tramite update
+      if (tipoFinal === 'ACTIVO') {
+        const bogotaISO = this.getBogotaISOString();
+        const finalAutorizador = autorizador?.trim() || record.autorizador || '';
+        
+        updateData.validacion_derechos = finalAutorizador;
+        updateData.validacion_derechos_fecha = bogotaISO;
+        updateData.derechos_paciente = { estado: 'Activo' };
+        updateData.autorizador = finalAutorizador;
+
+        // Also insert history for these fields
+        await this.consolidadoService.insertHistorialCambio({
+          tabla: 'base_hoy',
+          sourcerow: Number(record.id),
+          campo: 'derechos_paciente',
+          valor_antes: JSON.stringify(record.derechos_paciente || {}),
+          valor_nuevo: JSON.stringify({ estado: 'Activo' }),
+          cambiado_en: bogotaISO,
+          hc: record.hc || '',
+          ingreso: record.ingreso || ''
+        });
+
+        await this.consolidadoService.insertHistorialCambio({
+          tabla: 'base_hoy',
+          sourcerow: Number(record.id),
+          campo: 'validacion_derechos',
+          valor_antes: record.validacion_derechos || '',
+          valor_nuevo: finalAutorizador,
+          cambiado_en: bogotaISO,
+          hc: record.hc || '',
+          ingreso: record.ingreso || ''
+        });
+      } else {
+        // For other types, we update the tramite fields
+        updateData.proceso_notif = tipoFinal;
+        updateData.nombre_notif = JSON.stringify(updatedHistory);
+      }
+
+      await this.consolidadoService.updateRegistro(record.id, updateData);
+      
+      // Update local record to reflect changes immediately
+      this.editingTramiteRecord.set({
+        ...record,
+        ...updateData
+      });
+      
+      this.closeTramiteModal();
+    } catch (error) {
+      console.error('Error saving tramite:', error);
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
+  async deleteTramite(index: number) {
+    const record = this.editingTramiteRecord();
+    if (!record || !record.id) return;
+
+    this.saving.set(true);
+    try {
+      const { data: { user } } = await this.supabaseService.client.auth.getUser();
+      const userEmail = user?.email || 'Usuario';
+      const currentHistory = this.parsedTramites();
+      if (index >= 0 && index < currentHistory.length) {
+        // Mark as deleted in the original format so it saves correctly
+        // Since parsedTramites strips the ~~ we need to re-add it or just modify the raw history
+        let rawHistory: TramiteHistory[] = [];
+        const histStr = record['nombre_notif'];
+        if (typeof histStr === 'string' && histStr.trim().startsWith('[')) {
+          try {
+            rawHistory = JSON.parse(histStr) as TramiteHistory[];
+          } catch {
+            rawHistory = [];
+          }
+        } else if (Array.isArray(histStr)) {
+          rawHistory = [...histStr] as TramiteHistory[];
+        } else if (typeof histStr === 'string' && histStr.trim().length > 0) {
+          rawHistory = [{
+            fecha: record['updated_at'] ? new Date(record['updated_at'] as string).toLocaleString('es-CO', { timeZone: 'America/Bogota', dateStyle: 'short', timeStyle: 'short' }) : '',
+            tipo: (record['proceso_notif'] as string) || 'Otro',
+            nota: histStr
+          }];
+        }
+
+        if (rawHistory[index]) {
+          rawHistory[index].nota = `~~${rawHistory[index].nota}~~ (Eliminado por ${userEmail})`;
+          
+          await this.consolidadoService.updateRegistro(record.id, { 
+            nombre_notif: JSON.stringify(rawHistory)
+          });
+          
+          this.editingTramiteRecord.set({
+            ...record,
+            nombre_notif: JSON.stringify(rawHistory)
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error deleting tramite:', error);
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
+  openGestionModal(record: ConsolidadoRecord) {
+    this.editingGestionRecord.set(record);
+    this.tipoContratoInputValue.set(record['tipo_contrato_no_aut'] as string || '');
+    this.autInputValue.set(record['aut_estancia'] as string || 'NO');
+    this.gestionInputValue.set(this.extractDays(record['gestion_estancia']));
+  }
+
+  closeGestionModal() {
+    this.editingGestionRecord.set(null);
+  }
+
+  calculateNextDate(daysStr: string): string {
+    const days = parseInt(daysStr, 10);
+    if (isNaN(days) || days <= 0) return '';
+    const date = new Date();
+    date.setDate(date.getDate() + days);
+    return date.toISOString().split('T')[0];
+  }
+
+  async saveGestion(aut_estancia: string, tipo_contrato: string, gestion_estancia_days: string, fecha_proxima_gestion: string) {
+    const record = this.editingGestionRecord();
+    if (!record || !record.id) return;
+
+    this.saving.set(true);
+    try {
+      let gestionStr = '';
+      const days = parseInt(gestion_estancia_days, 10);
+      if (isNaN(days) || days === 0) {
+        gestionStr = 'Integral - No se gestiona';
+      } else {
+        gestionStr = `Cada ${days} días`;
+      }
+
+      await this.consolidadoService.updateRegistro(record.id, { 
+        aut_estancia: aut_estancia,
+        tipo_contrato_no_aut: (aut_estancia === 'NO' || aut_estancia === 'PGP' || aut_estancia === 'PP') ? tipo_contrato : null,
+        gestion_estancia: gestionStr,
+        fecha_proxima_gestion: fecha_proxima_gestion || null
+      });
+      this.closeGestionModal();
+    } catch (error) {
+      console.error('Error saving gestion:', error);
+      alert('Error al guardar la gestión de estancia');
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
+  openEntidadModal(record: ConsolidadoRecord) {
+    this.editingEntidadRecord.set(record);
+    this.epsSearchText.set(record['eps_soat'] as string || '');
+    this.entidadInputValue.set(record['entidad'] as string || '');
+    this.contratoInputValue.set(record['contrato'] as string || '');
+    this.entidadTab.set('datos');
+    if (record.id) {
+      this.consolidadoService.getCortesEstancia(Number(record.id)).then(cortes => this.cortesEstancia.set(cortes));
+    }
+  }
+
+  closeEntidadModal() {
+    this.editingEntidadRecord.set(null);
+  }
+
+  async saveCorte(tipo: string, autorizacion: string, fecha_corte: string) {
+    const record = this.editingEntidadRecord();
+    if (!record || !record.id) return;
+
+    if (!tipo || !autorizacion || !fecha_corte) {
+      alert('Por favor complete todos los campos para registrar el corte.');
+      return;
+    }
+
+    const nuevoCorte = {
+      base_hoy_id: Number(record.id),
+      tipo,
+      autorizacion,
+      fecha_corte
+    };
+
+    try {
+      const corte = await this.consolidadoService.addCorteEstancia(nuevoCorte);
+      if (corte) {
+        this.cortesEstancia.update(cortes => [corte, ...cortes]);
+      }
+    } catch (error) {
+      console.error('Error al guardar corte:', error);
+      alert('Error al guardar el corte.');
+    }
+  }
+
+  async deleteCorte(id: string) {
+    // confirm() no funciona en iframe, se elimina directamente en desarrollo
+    try {
+      const success = await this.consolidadoService.deleteCorteEstancia(id);
+      if (success) {
+        this.cortesEstancia.update(cortes => cortes.filter(c => c.id !== id));
+      }
+    } catch (error) {
+      console.error('Error al eliminar corte:', error);
+      alert('Error al eliminar el corte.');
+    }
+  }
+
+  async saveEntidad() {
+    const record = this.editingEntidadRecord();
+    if (!record) return;
+    
+    if (!record.id && !record.ingreso) {
+      console.error('No se puede guardar: el registro no tiene un ID o Ingreso válido.', record);
+      alert('Error: El registro no tiene un identificador válido en la base de datos. No se puede guardar.');
+      return;
+    }
+
+    const entidad = this.entidadInputValue() || '';
+    const eps_soat = this.epsSearchText() || '';
+    const contrato = this.contratoInputValue() || '';
+
+    this.saving.set(true);
+    console.log('Iniciando guardado de entidad para record:', record.id || record.ingreso, { entidad, eps_soat, contrato });
+    try {
+      const success = await this.consolidadoService.updateRegistro(record.id as string | number, { 
+        entidad: entidad.trim(),
+        eps_soat: eps_soat.trim(),
+        contrato: contrato.trim(),
+        ingreso: record.ingreso // Incluimos ingreso para fallback si id falta
+      });
+      
+      if (success) {
+        console.log('Guardado exitoso para record:', record.id);
+        this.closeEntidadModal();
+      } else {
+        console.warn('No se pudo actualizar el registro en Supabase para record:', record.id);
+        alert('No se pudo encontrar el registro en la base de datos para actualizar. Por favor, recarga la página e intenta de nuevo.');
+      }
+    } catch (e: unknown) {
+      const errorMsg = e instanceof Error ? e.message : String(e);
+      console.error('Error saving entidad:', e);
+      if (errorMsg.includes('eps_soat') || errorMsg.includes('PGRST204')) {
+        alert('Error de Base de Datos: Falta la columna "eps_soat" en la tabla "base_hoy". \n\nPara solucionar esto, ejecuta el siguiente comando SQL en Supabase:\n\nALTER TABLE base_hoy ADD COLUMN eps_soat text;\n\nLuego, en la sección API de Supabase, presiona "Reload Schema" para que los cambios surtan efecto.');
+      } else {
+        alert('Error al guardar la entidad: ' + errorMsg);
+      }
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
+  openDetalleModal(record: ConsolidadoRecord) {
+    this.viewingDetalleRecord.set(record);
+  }
+
+  closeDetalleModal() {
+    this.viewingDetalleRecord.set(null);
+  }
+
+  parseDate(dateStr: string): Date | null {
+    if (!dateStr) return null;
+    if (dateStr.includes('/')) {
+      const parts = dateStr.split('/');
+      if (parts.length === 3) {
+        return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+      }
+    } else if (dateStr.includes('-')) {
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+        return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+      }
+    }
+    const d = new Date(dateStr);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  calcularDiasCorte(record: ConsolidadoRecord): number {
+    const baseDateStr = (record['fecha_egreso_entidad'] || record['fecha_ingreso']) as string;
+    const baseDate = this.parseDate(baseDateStr);
+    if (!baseDate) return 0;
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    baseDate.setHours(0,0,0,0);
+    const diffTime = today.getTime() - baseDate.getTime();
+    return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  }
+
+  getRecordKeys(record: ConsolidadoRecord): string[] {
+    if (!record) return [];
+    // Filter out internal fields if necessary, e.g., id
+    return Object.keys(record).filter(k => k !== 'id').sort();
+  }
+
+  formatKey(key: string): string {
+    return key.replace(/_/g, ' ');
+  }
+}
+
