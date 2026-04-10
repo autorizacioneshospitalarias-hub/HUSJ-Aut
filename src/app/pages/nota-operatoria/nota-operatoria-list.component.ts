@@ -309,7 +309,7 @@ export class NotaOperatoriaListComponent {
     if (!status) return 'bg-slate-100 text-slate-500';
     const s = status.toUpperCase();
     if (s === 'SI') return 'bg-[#1a7441] text-white';
-    if (s === 'NO') return 'bg-[#b60205] text-white';
+    if (s === 'NO' || s === 'SIN AUTORIZAR') return 'bg-[#b60205] text-white';
     if (s === 'VERIFICADO') return 'bg-[#0b5394] text-white';
     if (s === 'PENDIENTE') return 'bg-[#ffe599] text-slate-800';
     if (s === 'CX AMBULATORIO') return 'bg-[#e0e0e0] text-slate-800';

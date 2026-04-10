@@ -2,9 +2,11 @@ import { Component, inject, computed, effect, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { ConsolidadoService, ConsolidadoRecord } from '../../services/consolidado.service';
 import { AreaAgrupacionService } from '../../services/area-agrupacion.service';
+import { ValidacionDerechosConfigService } from '../../services/validacion-derechos-config.service';
 import { ConsolidadoListComponent } from './consolidado-list.component';
 import { HeaderComponent } from '../../layout/header.component';
 import { MatIconModule } from '@angular/material/icon';
+import { LucideAngularModule, Filter, ChevronDown, Check, Search, X, LayoutGrid, ListFilter } from 'lucide-angular';
 
 // MODIFICADO: consolidado.component.ts no necesita cambios para el Realtime
 // porque consolidado.service.ts ya tiene la suscripción en iniciarRealtime()
@@ -13,7 +15,7 @@ import { MatIconModule } from '@angular/material/icon';
 @Component({
   selector: 'app-consolidado',
   standalone: true,
-  imports: [ConsolidadoListComponent, HeaderComponent, MatIconModule],
+  imports: [ConsolidadoListComponent, HeaderComponent, MatIconModule, LucideAngularModule],
   host: {
     class: 'block h-full'
   },
@@ -23,7 +25,7 @@ import { MatIconModule } from '@angular/material/icon';
       <app-header></app-header>
 
       <!-- Header de la página -->
-      <div class="bg-white border-b border-slate-200 px-6 py-3 relative z-30 shadow-sm">
+      <div class="bg-white border-b border-slate-200 px-6 py-3 relative z-30">
         <div class="flex items-center justify-between flex-wrap gap-4">
           <h2 class="text-xl font-bold text-slate-800 tracking-tight">
             @switch (activeView()) {
@@ -36,101 +38,98 @@ import { MatIconModule } from '@angular/material/icon';
           </h2>
           
           <div class="flex items-center gap-3">
-            <!-- Area Group Filter -->
-            <div class="flex items-center gap-2 relative z-50">
-              <mat-icon class="text-slate-400 text-[18px] w-5 h-5">category</mat-icon>
-              <div class="relative">
-                <button (click)="isAreaGroupDropdownOpen.set(!isAreaGroupDropdownOpen()); isServicioDropdownOpen.set(false)" class="flex items-center justify-between w-full text-[11px] font-medium text-slate-700 bg-white border border-slate-300 rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 min-w-[160px]">
-                  <span class="truncate">{{ selectedAreaGroup() || 'Todas las áreas' }}</span>
-                  <mat-icon class="text-[16px] w-4 h-4 text-slate-400">arrow_drop_down</mat-icon>
-                </button>
-
-                @if (isAreaGroupDropdownOpen()) {
-                  <!-- Backdrop -->
-                  <div class="fixed inset-0 z-40" 
-                       (click)="isAreaGroupDropdownOpen.set(false)"
-                       (keydown.escape)="isAreaGroupDropdownOpen.set(false)"
-                       tabindex="0"
-                       role="button"
-                       aria-label="Cerrar menú desplegable"></div>
-                  
-                  <div class="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-md shadow-lg">
-                    <ul class="py-1 text-[11px]">
-                      <li>
-                        <button (click)="selectedAreaGroup.set(null); isAreaGroupDropdownOpen.set(false)" class="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 text-slate-700">
-                          <mat-icon class="text-[16px] w-4 h-4 shrink-0 mt-0.5" [class.text-emerald-600]="selectedAreaGroup() === null" [class.opacity-0]="selectedAreaGroup() !== null">check</mat-icon>
-                          <span class="text-left leading-tight" [class.font-medium]="selectedAreaGroup() === null">Todas las áreas</span>
-                        </button>
-                      </li>
-                      <li>
-                        <button (click)="selectedAreaGroup.set('Urgencias'); isAreaGroupDropdownOpen.set(false)" class="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 text-slate-700">
-                          <mat-icon class="text-[16px] w-4 h-4 shrink-0 mt-0.5" [class.text-emerald-600]="selectedAreaGroup() === 'Urgencias'" [class.opacity-0]="selectedAreaGroup() !== 'Urgencias'">check</mat-icon>
-                          <span class="text-left leading-tight" [class.font-medium]="selectedAreaGroup() === 'Urgencias'">Urgencias</span>
-                        </button>
-                      </li>
-                      <li>
-                        <button (click)="selectedAreaGroup.set('Hospitalización'); isAreaGroupDropdownOpen.set(false)" class="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 text-slate-700">
-                          <mat-icon class="text-[16px] w-4 h-4 shrink-0 mt-0.5" [class.text-emerald-600]="selectedAreaGroup() === 'Hospitalización'" [class.opacity-0]="selectedAreaGroup() !== 'Hospitalización'">check</mat-icon>
-                          <span class="text-left leading-tight" [class.font-medium]="selectedAreaGroup() === 'Hospitalización'">Hospitalización</span>
-                        </button>
-                      </li>
-                    </ul>
-                  </div>
+            <!-- Consolidated Filter -->
+            <div class="relative z-50">
+              <button (click)="isServicioDropdownOpen.set(!isServicioDropdownOpen()); isAreaGroupDropdownOpen.set(false)" 
+                      class="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-all shadow-sm active:scale-95">
+                <lucide-icon [name]="ListFilter" class="w-4 h-4 text-slate-500"></lucide-icon>
+                <span>Filtros</span>
+                @if (hasActiveFilters()) {
+                  <span class="flex h-2 w-2 rounded-full bg-emerald-500"></span>
                 }
-              </div>
-            </div>
+                <lucide-icon [name]="ChevronDown" class="w-3.5 h-3.5 text-slate-400 ml-1"></lucide-icon>
+              </button>
 
-            <div class="flex items-center gap-2 relative z-50">
-              <mat-icon class="text-slate-400 text-[18px] w-5 h-5">filter_alt</mat-icon>
-              <div class="relative">
-                <button (click)="isServicioDropdownOpen.set(!isServicioDropdownOpen()); isAreaGroupDropdownOpen.set(false)" class="flex items-center justify-between w-full text-[11px] font-medium text-slate-700 bg-white border border-slate-300 rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 min-w-[200px]">
-                  <span class="truncate">{{ getServicioButtonText() }}</span>
-                  <mat-icon class="text-[16px] w-4 h-4 text-slate-400">arrow_drop_down</mat-icon>
-                </button>
-
-                @if (isServicioDropdownOpen()) {
-                  <!-- Backdrop -->
-                  <div class="fixed inset-0 z-40" 
-                       (click)="isServicioDropdownOpen.set(false)"
-                       (keydown.escape)="isServicioDropdownOpen.set(false)"
-                       tabindex="0"
-                       role="button"
-                       aria-label="Cerrar menú desplegable"></div>
-                  
-                  <div class="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-md shadow-lg">
-                    <div class="p-2 border-b border-slate-100">
-                      <div class="relative">
-                        <mat-icon class="absolute left-2 top-1/2 -translate-y-1/2 text-[14px] w-3.5 h-3.5 text-slate-400">search</mat-icon>
-                        <input type="text" 
-                               [value]="servicioSearchTerm()" 
-                               (input)="servicioSearchTerm.set($any($event.target).value)"
-                               class="w-full pl-7 pr-2 py-1.5 text-[11px] border border-slate-300 rounded focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-                               placeholder="Buscar servicio..."
-                               (click)="$event.stopPropagation()">
-                      </div>
-                      <div class="flex justify-between mt-2 px-1 text-[11px] font-medium text-emerald-600">
-                        <button (click)="selectAllServicios(); $event.stopPropagation()" class="hover:underline">Seleccionar todo</button>
-                        <button (click)="clearServicios(); $event.stopPropagation()" class="hover:underline">Borrar</button>
-                      </div>
+              @if (isServicioDropdownOpen()) {
+                <!-- Backdrop -->
+                <div class="fixed inset-0 z-40" 
+                     (click)="isServicioDropdownOpen.set(false)"
+                     (keydown.escape)="isServicioDropdownOpen.set(false)"
+                     tabindex="0"
+                     role="button"
+                     aria-label="Cerrar menú desplegable"></div>
+                
+                <div class="absolute right-0 z-50 mt-2 w-72 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden">
+                  <!-- Area Selection -->
+                  <div class="p-3 border-b border-slate-100 bg-slate-50/50">
+                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Grupo de Área</div>
+                    <div class="flex flex-wrap gap-2">
+                      <button (click)="selectedAreaGroup.set(null)" 
+                              [class]="selectedAreaGroup() === null ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'"
+                              class="px-2.5 py-1 text-[10px] font-bold border rounded-md transition-all">
+                        Todas
+                      </button>
+                      <button (click)="selectedAreaGroup.set('Urgencias')" 
+                              [class]="selectedAreaGroup() === 'Urgencias' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'"
+                              class="px-2.5 py-1 text-[10px] font-bold border rounded-md transition-all">
+                        Urgencias
+                      </button>
+                      <button (click)="selectedAreaGroup.set('Hospitalización')" 
+                              [class]="selectedAreaGroup() === 'Hospitalización' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'"
+                              class="px-2.5 py-1 text-[10px] font-bold border rounded-md transition-all">
+                        Hospitalización
+                      </button>
                     </div>
-                    <ul class="max-h-60 overflow-y-auto py-1 text-[11px]">
-                      @for (servicio of filteredServiciosUnicos(); track servicio) {
-                        <li>
-                          <button (click)="toggleServicio(servicio); $event.stopPropagation()" class="w-full flex items-start gap-2 px-3 py-1.5 hover:bg-slate-50 text-slate-700">
-                            <mat-icon class="text-[16px] w-4 h-4 shrink-0 mt-0.5" [class.text-emerald-600]="isServicioSelected(servicio)" [class.opacity-0]="!isServicioSelected(servicio)">
-                              check
-                            </mat-icon>
-                            <span class="text-left leading-tight" [class.font-medium]="isServicioSelected(servicio)">{{ servicio }}</span>
-                          </button>
-                        </li>
-                      }
-                      @if (filteredServiciosUnicos().length === 0) {
-                        <li class="px-3 py-2 text-slate-400 italic text-center">No hay resultados</li>
-                      }
-                    </ul>
                   </div>
-                }
-              </div>
+
+                  <!-- Servicio Search -->
+                  <div class="p-3 border-b border-slate-100">
+                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Servicios</div>
+                    <div class="relative">
+                      <lucide-icon [name]="Search" class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400"></lucide-icon>
+                      <input type="text" 
+                             [value]="servicioSearchTerm()" 
+                             (input)="servicioSearchTerm.set($any($event.target).value)"
+                             class="w-full pl-8 pr-2 py-1.5 text-[11px] border border-slate-200 rounded-lg focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                             placeholder="Buscar servicio..."
+                             (click)="$event.stopPropagation()">
+                    </div>
+                    <div class="flex justify-between mt-2 px-1 text-[10px] font-bold text-emerald-600">
+                      <button (click)="selectAllServicios(); $event.stopPropagation()" class="hover:underline">Seleccionar todo</button>
+                      <button (click)="clearServicios(); $event.stopPropagation()" class="hover:underline text-slate-400">Borrar</button>
+                    </div>
+                  </div>
+
+                  <!-- Servicio List -->
+                  <ul class="max-h-60 overflow-y-auto py-1 text-[11px]">
+                    @for (servicio of filteredServiciosUnicos(); track servicio) {
+                      <li>
+                        <button (click)="toggleServicio(servicio); $event.stopPropagation()" class="w-full flex items-start gap-2 px-3 py-1.5 hover:bg-slate-50 text-slate-700 transition-colors">
+                          <div class="w-4 h-4 rounded border flex items-center justify-center shrink-0 mt-0.5"
+                               [class.bg-emerald-500]="isServicioSelected(servicio)"
+                               [class.border-emerald-500]="isServicioSelected(servicio)"
+                               [class.border-slate-300]="!isServicioSelected(servicio)">
+                            @if (isServicioSelected(servicio)) {
+                              <lucide-icon [name]="Check" class="w-3 h-3 text-white"></lucide-icon>
+                            }
+                          </div>
+                          <span class="text-left leading-tight" [class.font-medium]="isServicioSelected(servicio)">{{ servicio }}</span>
+                        </button>
+                      </li>
+                    }
+                    @if (filteredServiciosUnicos().length === 0) {
+                      <li class="px-3 py-4 text-slate-400 italic text-center">No hay resultados</li>
+                    }
+                  </ul>
+
+                  <!-- Footer -->
+                  <div class="p-2 bg-slate-50 border-t border-slate-100 flex justify-end">
+                    <button (click)="isServicioDropdownOpen.set(false)" class="px-3 py-1 text-[10px] font-bold text-white bg-slate-800 rounded-md hover:bg-slate-900 transition-colors">
+                      Aplicar
+                    </button>
+                  </div>
+                </div>
+              }
             </div>
           </div>
         </div>
@@ -163,8 +162,17 @@ import { MatIconModule } from '@angular/material/icon';
   `
 })
 export class ConsolidadoComponent {
+  readonly Filter = Filter;
+  readonly ChevronDown = ChevronDown;
+  readonly Check = Check;
+  readonly Search = Search;
+  readonly X = X;
+  readonly LayoutGrid = LayoutGrid;
+  readonly ListFilter = ListFilter;
+
   consolidadoService = inject(ConsolidadoService);
   areaAgrupacionService = inject(AreaAgrupacionService);
+  validacionDerechosConfigService = inject(ValidacionDerechosConfigService);
   route = inject(ActivatedRoute);
   
   activeView = signal<'general' | 'pgp_aic' | 'estancias_nuevas' | 'seguimiento' | 'validacion_derechos'>('general');
@@ -188,6 +196,10 @@ export class ConsolidadoComponent {
     if (selected === null) return true;
     return selected.includes(servicio);
   }
+
+  hasActiveFilters = computed(() => {
+    return this.selectedAreaGroup() !== null || this.selectedServicios() !== null;
+  });
 
   toggleServicio(servicio: string) {
     const selected = this.selectedServicios();
@@ -249,7 +261,8 @@ export class ConsolidadoComponent {
     } else if (this.activeView() === 'seguimiento') {
       records = records.filter((r: ConsolidadoRecord) => r['aut_estancia'] === 'NO');
     } else if (this.activeView() === 'validacion_derechos') {
-      records = records.filter((r: ConsolidadoRecord) => (Number(r['dias_ingr']) || 0) > 3);
+      const dias = this.validacionDerechosConfigService.diasValidacion();
+      records = records.filter((r: ConsolidadoRecord) => (Number(r['dias_ingr']) || 0) >= dias);
     }
 
     const areas = records.map((r: ConsolidadoRecord) => r['area']).filter(Boolean) as string[];
@@ -271,7 +284,8 @@ export class ConsolidadoComponent {
     } else if (this.activeView() === 'seguimiento') {
       registros = registros.filter((r: ConsolidadoRecord) => r['aut_estancia'] === 'NO');
     } else if (this.activeView() === 'validacion_derechos') {
-      registros = registros.filter((r: ConsolidadoRecord) => (Number(r['dias_ingr']) || 0) > 3);
+      const dias = this.validacionDerechosConfigService.diasValidacion();
+      registros = registros.filter((r: ConsolidadoRecord) => (Number(r['dias_ingr']) || 0) >= dias);
     }
 
     const selected = this.selectedServicios();

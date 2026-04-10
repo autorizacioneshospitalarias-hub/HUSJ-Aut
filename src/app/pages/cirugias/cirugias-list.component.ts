@@ -47,7 +47,7 @@ interface GroupedCirugia extends Cirugia {
                 <th class="px-4 py-3 font-semibold group relative cursor-pointer" (click)="toggleSort('date')">
                   <div class="flex items-center gap-1">
                     <span>Fecha</span>
-                    <mat-icon class="text-[14px] w-4 h-4 opacity-0 group-hover:opacity-100 cursor-pointer text-slate-400 hover:text-slate-900" (click)="toggleFilter('date', $event)">search</mat-icon>
+                    <mat-icon class="text-[14px] w-4 h-4 opacity-0 group-hover:opacity-100 cursor-pointer text-slate-400 hover:text-slate-900 transition-opacity duration-200" (click)="toggleFilter('date', $event)">search</mat-icon>
                   </div>
                   <div class="absolute inset-y-0 right-0 flex items-center z-20 transition-all duration-200 ease-out overflow-hidden"
                        [ngClass]="filters()['date'] !== undefined ? 'w-full opacity-100 px-1' : 'w-0 opacity-0 px-0 pointer-events-none'">
@@ -61,7 +61,7 @@ interface GroupedCirugia extends Cirugia {
                 <th class="px-4 py-3 font-semibold group relative cursor-pointer" (click)="toggleSort('admissionNumber')">
                   <div class="flex items-center gap-1">
                     <span>Admisión</span>
-                    <mat-icon class="text-[14px] w-4 h-4 opacity-0 group-hover:opacity-100 cursor-pointer text-slate-400 hover:text-slate-900" (click)="toggleFilter('admissionNumber', $event)">search</mat-icon>
+                    <mat-icon class="text-[14px] w-4 h-4 opacity-0 group-hover:opacity-100 cursor-pointer text-slate-400 hover:text-slate-900 transition-opacity duration-200" (click)="toggleFilter('admissionNumber', $event)">search</mat-icon>
                   </div>
                   <div class="absolute inset-y-0 right-0 flex items-center z-20 transition-all duration-200 ease-out overflow-hidden"
                        [ngClass]="filters()['admissionNumber'] !== undefined ? 'w-full opacity-100 px-1' : 'w-0 opacity-0 px-0 pointer-events-none'">
@@ -75,7 +75,7 @@ interface GroupedCirugia extends Cirugia {
                 <th class="px-4 py-3 font-semibold group relative cursor-pointer" (click)="toggleSort('patientName')">
                   <div class="flex items-center gap-1">
                     <span>Paciente</span>
-                    <mat-icon class="text-[14px] w-4 h-4 opacity-0 group-hover:opacity-100 cursor-pointer text-slate-400 hover:text-slate-900" (click)="toggleFilter('patientName', $event)">search</mat-icon>
+                    <mat-icon class="text-[14px] w-4 h-4 opacity-0 group-hover:opacity-100 cursor-pointer text-slate-400 hover:text-slate-900 transition-opacity duration-200" (click)="toggleFilter('patientName', $event)">search</mat-icon>
                   </div>
                   <div class="absolute inset-y-0 right-0 flex items-center z-20 transition-all duration-200 ease-out overflow-hidden"
                        [ngClass]="filters()['patientName'] !== undefined ? 'w-full opacity-100 px-1' : 'w-0 opacity-0 px-0 pointer-events-none'">
@@ -94,7 +94,7 @@ interface GroupedCirugia extends Cirugia {
                 <th class="px-4 py-3 font-semibold w-[800px] group relative cursor-pointer" (click)="toggleSort('entity')">
                   <div class="flex items-center gap-1">
                     <span>Entidad</span>
-                    <mat-icon class="text-[14px] w-4 h-4 opacity-0 group-hover:opacity-100 cursor-pointer text-slate-400 hover:text-slate-900" (click)="toggleFilter('entity', $event)">search</mat-icon>
+                    <mat-icon class="text-[14px] w-4 h-4 opacity-0 group-hover:opacity-100 cursor-pointer text-slate-400 hover:text-slate-900 transition-opacity duration-200" (click)="toggleFilter('entity', $event)">search</mat-icon>
                   </div>
                   <div class="absolute inset-y-0 right-0 flex items-center z-20 transition-all duration-200 ease-out overflow-hidden"
                        [ngClass]="filters()['entity'] !== undefined ? 'w-full opacity-100 px-1' : 'w-0 opacity-0 px-0 pointer-events-none'">
@@ -108,7 +108,7 @@ interface GroupedCirugia extends Cirugia {
                 <th class="px-4 py-3 font-semibold group relative min-w-[250px] cursor-pointer" (click)="toggleSort('procedure')">
                   <div class="flex items-center gap-1">
                     <span>Procedimiento</span>
-                    <mat-icon class="text-[14px] w-4 h-4 opacity-0 group-hover:opacity-100 cursor-pointer text-slate-400 hover:text-slate-900" (click)="toggleFilter('procedure', $event)">search</mat-icon>
+                    <mat-icon class="text-[14px] w-4 h-4 opacity-0 group-hover:opacity-100 cursor-pointer text-slate-400 hover:text-slate-900 transition-opacity duration-200" (click)="toggleFilter('procedure', $event)">search</mat-icon>
                   </div>
                   <div class="absolute inset-y-0 right-0 flex items-center z-20 transition-all duration-200 ease-out overflow-hidden"
                        [ngClass]="filters()['procedure'] !== undefined ? 'w-full opacity-100 px-1' : 'w-0 opacity-0 px-0 pointer-events-none'">
@@ -122,7 +122,7 @@ interface GroupedCirugia extends Cirugia {
                 <th class="px-4 py-3 font-semibold group relative cursor-pointer" (click)="toggleSort('estado')">
                   <div class="flex items-center gap-1">
                     <span>Estado & Novedad</span>
-                    <mat-icon class="text-[14px] w-4 h-4 opacity-0 group-hover:opacity-100 cursor-pointer text-slate-400 hover:text-slate-900" (click)="toggleFilter('estado', $event)">search</mat-icon>
+                    <mat-icon class="text-[14px] w-4 h-4 opacity-0 group-hover:opacity-100 cursor-pointer text-slate-400 hover:text-slate-900 transition-opacity duration-200" (click)="toggleFilter('estado', $event)">search</mat-icon>
                   </div>
                   <div class="absolute inset-y-0 right-0 flex items-center z-20 transition-all duration-200 ease-out overflow-hidden"
                        [ngClass]="filters()['estado'] !== undefined ? 'w-full opacity-100 px-1' : 'w-0 opacity-0 px-0 pointer-events-none'">
@@ -136,7 +136,7 @@ interface GroupedCirugia extends Cirugia {
                 <th class="px-4 py-3 font-semibold group relative cursor-pointer" (click)="toggleSort('authorization')">
                   <div class="flex items-center gap-1">
                     <span>Autorización</span>
-                    <mat-icon class="text-[14px] w-4 h-4 opacity-0 group-hover:opacity-100 cursor-pointer text-slate-400 hover:text-slate-900" (click)="toggleFilter('authorization', $event)">search</mat-icon>
+                    <mat-icon class="text-[14px] w-4 h-4 opacity-0 group-hover:opacity-100 cursor-pointer text-slate-400 hover:text-slate-900 transition-opacity duration-200" (click)="toggleFilter('authorization', $event)">search</mat-icon>
                   </div>
                   <div class="absolute inset-y-0 right-0 flex items-center z-20 transition-all duration-200 ease-out overflow-hidden"
                        [ngClass]="filters()['authorization'] !== undefined ? 'w-full opacity-100 px-1' : 'w-0 opacity-0 px-0 pointer-events-none'">
@@ -150,7 +150,7 @@ interface GroupedCirugia extends Cirugia {
                 <th class="px-4 py-3 font-semibold group relative cursor-pointer" (click)="toggleSort('surgeon')">
                   <div class="flex items-center gap-1">
                     <span>Especialista</span>
-                    <mat-icon class="text-[14px] w-4 h-4 opacity-0 group-hover:opacity-100 cursor-pointer text-slate-400 hover:text-slate-900" (click)="toggleFilter('surgeon', $event)">search</mat-icon>
+                    <mat-icon class="text-[14px] w-4 h-4 opacity-0 group-hover:opacity-100 cursor-pointer text-slate-400 hover:text-slate-900 transition-opacity duration-200" (click)="toggleFilter('surgeon', $event)">search</mat-icon>
                   </div>
                   <div class="absolute inset-y-0 right-0 flex items-center z-20 transition-all duration-200 ease-out overflow-hidden"
                        [ngClass]="filters()['surgeon'] !== undefined ? 'w-full opacity-100 px-1' : 'w-0 opacity-0 px-0 pointer-events-none'">
@@ -164,7 +164,7 @@ interface GroupedCirugia extends Cirugia {
                 <th class="px-4 py-3 font-semibold group relative cursor-pointer" (click)="toggleSort('assistant1')">
                   <div class="flex items-center gap-1">
                     <span>Ayudantes</span>
-                    <mat-icon class="text-[14px] w-4 h-4 opacity-0 group-hover:opacity-100 cursor-pointer text-slate-400 hover:text-slate-900" (click)="toggleFilter('assistant1', $event)">search</mat-icon>
+                    <mat-icon class="text-[14px] w-4 h-4 opacity-0 group-hover:opacity-100 cursor-pointer text-slate-400 hover:text-slate-900 transition-opacity duration-200" (click)="toggleFilter('assistant1', $event)">search</mat-icon>
                   </div>
                   <div class="absolute inset-y-0 right-0 flex items-center z-20 transition-all duration-200 ease-out overflow-hidden"
                        [ngClass]="filters()['assistant1'] !== undefined ? 'w-full opacity-100 px-1' : 'w-0 opacity-0 px-0 pointer-events-none'">
@@ -176,12 +176,11 @@ interface GroupedCirugia extends Cirugia {
                   </div>
                 </th>
                 <th class="px-4 py-3 font-semibold w-24 text-center">
-                  <div class="flex flex-col items-center justify-center gap-1">
-                    <span class="text-[10px] uppercase mb-1">Verificado</span>
+                  <div class="flex items-center justify-center h-full">
                     <button (click)="toggleAllVerificado($event)"
-                            class="w-4 h-4 flex items-center justify-center rounded-full border transition-colors mx-auto focus:outline-none cursor-pointer"
-                            [ngClass]="isAllVerificado() ? 'bg-emerald-600 border-emerald-600 text-white shadow-sm' : 'bg-white border-slate-300 text-transparent hover:border-slate-400'">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="w-2.5 h-2.5">
+                            class="w-5 h-5 flex items-center justify-center rounded-full border transition-colors mx-auto focus:outline-none cursor-pointer"
+                            [ngClass]="isAllVerificado() ? 'bg-emerald-600 border-emerald-600 text-white shadow-sm' : 'bg-white border-slate-300 text-slate-300 hover:border-slate-400'">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="w-3 h-3">
                         <path d="M5 13l4 4L19 7" />
                       </svg>
                     </button>
@@ -190,7 +189,7 @@ interface GroupedCirugia extends Cirugia {
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100 text-slate-600 align-top">
-              @for (c of filteredCirugias(); track c.groupId; let i = $index) {
+              @for (c of paginatedCirugias(); track c.groupId; let i = $index) {
                 <tr (click)="cirugiaClick.emit(c)" 
                     (keydown.enter)="cirugiaClick.emit(c)"
                     tabindex="0"
@@ -435,6 +434,37 @@ interface GroupedCirugia extends Cirugia {
             </tbody>
           </table>
         </div>
+        
+        <!-- Pagination Controls -->
+        <div class="flex items-center justify-between px-4 py-3 bg-white border-t border-slate-200 shrink-0">
+          <div class="flex items-center gap-6">
+            <div class="flex items-center gap-2">
+              <label class="text-sm text-slate-500">Grupos por página:</label>
+              <select class="text-sm border border-slate-200 rounded px-2 py-1 bg-slate-50 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                      (change)="onPageSizeChange($event)">
+                <option value="50" [selected]="pageSize() === 50">50</option>
+                <option value="100" [selected]="pageSize() === 100">100</option>
+                <option value="200" [selected]="pageSize() === 200">200</option>
+                <option value="500" [selected]="pageSize() === 500">500</option>
+                <option value="Todos" [selected]="pageSize() === 'Todos'">Todos</option>
+              </select>
+            </div>
+            <div class="text-sm text-slate-500 hidden sm:block">
+              Mostrando <span class="font-medium">{{ filteredCirugias().length === 0 ? 0 : (pageSize() === 'Todos' ? 1 : (currentPage() - 1) * +pageSize() + 1) }}</span> a <span class="font-medium">{{ pageSize() === 'Todos' ? filteredCirugias().length : Math.min(currentPage() * +pageSize(), filteredCirugias().length) }}</span> de <span class="font-medium">{{ filteredCirugias().length }}</span> grupos
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button (click)="prevPage()" [disabled]="currentPage() === 1 || pageSize() === 'Todos'" class="px-3 py-1.5 border border-slate-200 rounded text-sm disabled:opacity-50 hover:bg-slate-50 transition-colors font-medium text-slate-700 flex items-center gap-1">
+              <mat-icon class="text-[16px] w-4 h-4">chevron_left</mat-icon> Anterior
+            </button>
+            <div class="text-sm text-slate-600 px-2 font-medium">
+              Página {{ currentPage() }} de {{ totalPages() }}
+            </div>
+            <button (click)="nextPage()" [disabled]="currentPage() === totalPages() || pageSize() === 'Todos'" class="px-3 py-1.5 border border-slate-200 rounded text-sm disabled:opacity-50 hover:bg-slate-50 transition-colors font-medium text-slate-700 flex items-center gap-1">
+              Siguiente <mat-icon class="text-[16px] w-4 h-4">chevron_right</mat-icon>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -671,7 +701,59 @@ export class CirugiasListComponent {
     return hasSearch || hasColumnFilters || hasTqFilter;
   });
 
+  Math = Math;
+
+  // Pagination
+  pageSize = signal<number | 'Todos'>(50);
+  currentPage = signal(1);
+
+  paginatedCirugias = computed(() => {
+    const filtered = this.filteredCirugias();
+    const size = this.pageSize();
+    if (size === 'Todos') return filtered;
+    
+    const start = (this.currentPage() - 1) * size;
+    const end = start + size;
+    return filtered.slice(start, end);
+  });
+
+  totalPages = computed(() => {
+    const size = this.pageSize();
+    if (size === 'Todos') return 1;
+    return Math.ceil(this.filteredCirugias().length / size) || 1;
+  });
+
+  nextPage() {
+    if (this.currentPage() < this.totalPages()) {
+      this.currentPage.update(p => p + 1);
+    }
+  }
+
+  prevPage() {
+    if (this.currentPage() > 1) {
+      this.currentPage.update(p => p - 1);
+    }
+  }
+
+  onPageSizeChange(event: Event) {
+    const val = (event.target as HTMLSelectElement).value;
+    if (val === 'Todos') {
+      this.pageSize.set('Todos');
+    } else {
+      this.pageSize.set(Number(val));
+    }
+    this.currentPage.set(1);
+  }
+
   constructor() {
+    // Reset to page 1 when filters or search query change
+    effect(() => {
+      this.filters();
+      this.cirugiaService.searchQuery();
+      this.activeTQFilter();
+      this.currentPage.set(1);
+    }, { allowSignalWrites: true });
+    
     // Auto-expand when TQ filter is active and there's only one group
     effect(() => {
       const filter = this.activeTQFilter();

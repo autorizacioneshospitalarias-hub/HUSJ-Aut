@@ -1,6 +1,6 @@
 import { Injectable, signal, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { NotaOperatoria } from '../models/nota-operatoria';
+import { NotaOperatoria, SupabaseNotaOperatoria } from '../models/nota-operatoria';
 import { SupabaseService } from './supabase.service';
 
 @Injectable({
@@ -32,7 +32,11 @@ export class NotaOperatoriaService {
       
       if (error) throw error;
       
-      return (data || []).map((n: NotaOperatoria) => ({ ...n, id: n.id || crypto.randomUUID() }));
+      return (data || []).map((n: SupabaseNotaOperatoria) => ({ 
+        ...n, 
+        id: n.id || crypto.randomUUID(),
+        autorizacion: n.autorizacion || n.Authorization || null
+      }));
     } catch (error) {
       console.error('Error fetching notas operatorias by ingreso:', error);
       return [];
@@ -50,7 +54,11 @@ export class NotaOperatoriaService {
       
       if (error) throw error;
       
-      const notasConId = (data || []).map((n: NotaOperatoria) => ({ ...n, id: n.id || crypto.randomUUID() }));
+      const notasConId = (data || []).map((n: SupabaseNotaOperatoria) => ({ 
+        ...n, 
+        id: n.id || crypto.randomUUID(),
+        autorizacion: n.autorizacion || n.Authorization || null
+      }));
       this.notas.set(notasConId);
     } catch (error: unknown) {
       console.error('Error cargando notas operatorias:', error);
@@ -78,7 +86,11 @@ export class NotaOperatoriaService {
       
       if (error) throw error;
       
-      const notasConId = (data || []).map((n: NotaOperatoria) => ({ ...n, id: n.id || crypto.randomUUID() }));
+      const notasConId = (data || []).map((n: SupabaseNotaOperatoria) => ({ 
+        ...n, 
+        id: n.id || crypto.randomUUID(),
+        autorizacion: n.autorizacion || n.Authorization || null
+      }));
       this.notas.set(notasConId);
     } catch (error: unknown) {
       console.error('Error buscando notas operatorias:', error);

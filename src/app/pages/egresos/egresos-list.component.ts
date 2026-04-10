@@ -12,88 +12,43 @@ import { FormsModule } from '@angular/forms';
   template: `
     <div class="h-full p-2 animate-in fade-in duration-300 bg-slate-50 focus:outline-none" (click)="closeAllFilters()" role="button" tabindex="0" (keydown.enter)="closeAllFilters()">
       <div class="rounded-xl shadow-sm border border-slate-200 overflow-hidden h-full flex flex-col" [ngClass]="hasActiveFilters() ? 'bg-slate-100/50' : 'bg-white'">
-        <div class="flex items-center justify-end px-4 py-2 border-b border-slate-200 bg-white shrink-0">
-          <div class="flex items-center gap-2">
-            <div class="relative">
-              <button #filterButton (click)="toggleFilterMenu($event)" class="p-1 hover:bg-slate-100 rounded transition-colors"
-                      [ngClass]="{'text-blue-600': hasAnyFilter()}">
-                <mat-icon class="text-[16px] w-4 h-4">filter_list</mat-icon>
-              </button>
-              @if (filterMenuOpen) {
-                <div #filterMenu class="absolute right-0 top-full mt-1 w-48 bg-white border border-slate-200 rounded-lg shadow-xl z-20 p-2">
-                  @if (!selectedColumn) {
-                    @for (col of filterableColumns; track col.key) {
-                      <div (click)="selectColumn(col.key)" 
-                           (keydown.enter)="selectColumn(col.key)" 
-                           tabindex="0" 
-                           class="cursor-pointer hover:bg-slate-50 p-2 text-[11px] rounded flex items-center justify-between">
-                        {{ col.label }}
-                        @if (getFilterSize(col.key) > 0) {
-                          <span class="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
-                        }
-                      </div>
-                    }
-                  } @else {
-                    <div class="flex items-center gap-2 mb-2 pb-2 border-b border-slate-100">
-                      <button (click)="selectedColumn = null" class="p-1 hover:bg-slate-100 rounded">
-                        <mat-icon class="text-[14px] w-4 h-4">arrow_back</mat-icon>
-                      </button>
-                      <span class="text-[11px] font-bold">{{ getColumnLabel(selectedColumn) }}</span>
-                    </div>
-                    <input type="text" [(ngModel)]="searchTerms[selectedColumn]" placeholder="Buscar..." class="w-full text-[11px] px-2 py-1 border border-slate-200 rounded mb-2 focus:outline-none focus:ring-1 focus:ring-black">
-                    <div class="max-h-48 overflow-y-auto">
-                      @for (val of getUniqueValues(selectedColumn, searchTerms[selectedColumn]); track val) {
-                        <div (click)="toggleFilter(selectedColumn, val)" 
-                             (keydown.enter)="toggleFilter(selectedColumn, val)" 
-                             tabindex="0" 
-                             role="checkbox"
-                             [attr.aria-checked]="activeFilters()[selectedColumn]?.has(val)"
-                             class="flex items-center gap-2 px-2 py-1 cursor-pointer hover:bg-slate-50 rounded text-[11px]">
-                          <input type="checkbox" [checked]="activeFilters()[selectedColumn]?.has(val)" class="accent-black" tabindex="-1">
-                          {{ val }}
-                        </div>
-                      }
-                    </div>
-                  }
-                </div>
-              }
-            </div>
-          </div>
-        </div>
         <div class="overflow-auto flex-1 scrollbar-hide">
           <table class="w-full text-sm text-left whitespace-nowrap">
             <thead class="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
               <tr>
                 <th class="px-4 py-3 font-semibold w-10">#</th>
                 <th class="px-4 py-3 font-semibold">Fecha Salida</th>
-                <th class="px-4 py-3 font-semibold">Paciente</th>
+                <th class="px-4 py-3 font-semibold cursor-pointer hover:bg-slate-100 transition-colors" (click)="sortData('nombre')">
+                  <div class="flex items-center gap-1">
+                    Paciente
+                    <mat-icon class="text-[14px] w-3.5 h-3.5" [class.text-slate-400]="sortColumn() !== 'nombre'" [class.text-black]="sortColumn() === 'nombre'">
+                      {{ sortColumn() === 'nombre' && sortDirection() === 'asc' ? 'expand_less' : 'expand_more' }}
+                    </mat-icon>
+                  </div>
+                </th>
                 <th class="px-4 py-3 font-semibold">Ingreso</th>
                 <th class="px-4 py-3 font-semibold">Servicio / Cama</th>
-                <th class="px-4 py-3 font-semibold">Columna W</th>
-                <th class="px-4 py-3 font-semibold">
+                <th class="px-4 py-3 font-semibold cursor-pointer hover:bg-slate-100 transition-colors" (click)="sortData('columna_w')">
+                  <div class="flex items-center gap-1">
+                    Columna W
+                    <mat-icon class="text-[14px] w-3.5 h-3.5" [class.text-slate-400]="sortColumn() !== 'columna_w'" [class.text-black]="sortColumn() === 'columna_w'">
+                      {{ sortColumn() === 'columna_w' && sortDirection() === 'asc' ? 'expand_less' : 'expand_more' }}
+                    </mat-icon>
+                  </div>
+                </th>
+                <th class="px-4 py-3 font-semibold cursor-pointer hover:bg-slate-100 transition-colors" (click)="sortData('entidad')">
                   <div class="flex items-center gap-1">
                     Entidad
-                    @if (getFilterSize('entidad') > 0) {
-                      <button (click)="clearColumnFilter('entidad', $event)" class="text-blue-500 hover:text-red-500 transition-colors flex items-center" title="Quitar filtro">
-                        <mat-icon class="text-[14px] w-3.5 h-3.5">close</mat-icon>
-                      </button>
-                    }
+                    <mat-icon class="text-[14px] w-3.5 h-3.5" [class.text-slate-400]="sortColumn() !== 'entidad'" [class.text-black]="sortColumn() === 'entidad'">
+                      {{ sortColumn() === 'entidad' && sortDirection() === 'asc' ? 'expand_less' : 'expand_more' }}
+                    </mat-icon>
                   </div>
                 </th>
                 <th class="px-4 py-3 font-semibold">Municipio</th>
                 <th class="px-4 py-3 font-semibold text-center">Días</th>
                 <th class="px-4 py-3 font-semibold">HC15</th>
                 <th class="px-4 py-3 font-semibold">HC19</th>
-                <th class="px-4 py-3 font-semibold">
-                  <div class="flex items-center gap-1">
-                    Estado
-                    @if (getFilterSize('estado_y') > 0) {
-                      <button (click)="clearColumnFilter('estado_y', $event)" class="text-blue-500 hover:text-red-500 transition-colors flex items-center" title="Quitar filtro">
-                        <mat-icon class="text-[14px] w-3.5 h-3.5">close</mat-icon>
-                      </button>
-                    }
-                  </div>
-                </th>
+                <th class="px-4 py-3 font-semibold">Estado</th>
                 <th class="px-4 py-3 font-semibold">Autorizador</th>
                 <th class="px-4 py-3 font-semibold">Observación</th>
                 <th class="px-4 py-3 font-semibold text-center">Tiempo</th>
@@ -228,32 +183,22 @@ export class EgresosListComponent {
   filterCoincidences = output<{ documento: string | null, ingreso: string | null, nombre: string | null }>();
   clearFilter = output<void>();
 
-  filterableColumns = [
-    { key: 'entidad', label: 'Entidad' },
-    { key: 'estado_y', label: 'Estado' }
-  ];
-
-  activeFilters = signal<Record<string, Set<string>>>({});
-  searchTerms: Record<string, string> = {};
-  filterMenuOpen = false;
-  selectedColumn: string | null = null;
-  @ViewChild('filterMenu') filterMenu!: ElementRef;
-  @ViewChild('filterButton') filterButton!: ElementRef;
-  private el = inject(ElementRef);
   egresoService = inject(EgresoService);
 
   editingObservationId = signal<string | null>(null);
   editObservationText = signal<string>('');
   isSavingObservation = signal<boolean>(false);
 
+  sortColumn = signal<string | null>(null);
+  sortDirection = signal<'asc' | 'desc'>('asc');
+
   hasActiveFilters = computed(() => {
-    return this.hasAnyFilter() || !!this.egresoService.searchQuery();
+    return !!this.egresoService.searchQuery();
   });
 
   filteredEgresos = computed(() => {
     const allEgresos = this.egresos();
     const filter = this.activeFilter();
-    const filters = this.activeFilters();
     const searchQuery = this.egresoService.searchQuery();
     
     let result = allEgresos;
@@ -274,86 +219,32 @@ export class EgresosListComponent {
       );
     }
 
-    return result.filter(e => {
-      for (const col of this.filterableColumns) {
-        const activeValues = filters[col.key];
-        if (activeValues && activeValues.size > 0) {
-          const val = this.getColValue(e, col.key);
-          if (!activeValues.has(val)) return false;
-        }
-      }
-      return true;
-    });
+    // Sorting
+    const col = this.sortColumn();
+    const dir = this.sortDirection();
+    if (col) {
+      result = [...result].sort((a, b) => {
+        const valA = (a[col as keyof Egreso] || '').toString().toLowerCase();
+        const valB = (b[col as keyof Egreso] || '').toString().toLowerCase();
+        if (valA < valB) return dir === 'asc' ? -1 : 1;
+        if (valA > valB) return dir === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return result;
   });
 
-  getFilterSize(key: string): number {
-    return this.activeFilters()[key]?.size || 0;
-  }
-
-  @HostListener('document:click', ['$event'])
-  clickOutside(event: Event) {
-    if (this.filterMenuOpen && 
-        this.filterMenu && 
-        !this.filterMenu.nativeElement.contains(event.target) &&
-        this.filterButton &&
-        !this.filterButton.nativeElement.contains(event.target)) {
-      this.filterMenuOpen = false;
-      this.selectedColumn = null;
+  sortData(column: string) {
+    if (this.sortColumn() === column) {
+      this.sortDirection.set(this.sortDirection() === 'asc' ? 'desc' : 'asc');
+    } else {
+      this.sortColumn.set(column);
+      this.sortDirection.set('asc');
     }
   }
 
-  hasAnyFilter = computed(() => Object.values(this.activeFilters()).some(set => set.size > 0));
-
-  toggleFilterMenu(event: Event) {
-    event.stopPropagation();
-    this.filterMenuOpen = !this.filterMenuOpen;
-    if (!this.filterMenuOpen) this.selectedColumn = null;
-  }
-
-  selectColumn(key: string) {
-    this.selectedColumn = key;
-  }
-
-  clearColumnFilter(key: string, event: Event) {
-    event.stopPropagation();
-    this.activeFilters.update(filters => {
-      const newFilters = { ...filters };
-      delete newFilters[key];
-      return newFilters;
-    });
-  }
-
-  getColumnLabel(key: string): string {
-    return this.filterableColumns.find(c => c.key === key)?.label || '';
-  }
-
-  toggleFilter(key: string, value: string) {
-    this.activeFilters.update(filters => {
-      const newFilters = { ...filters };
-      if (!newFilters[key]) newFilters[key] = new Set();
-      if (newFilters[key].has(value)) {
-        newFilters[key].delete(value);
-      } else {
-        newFilters[key].add(value);
-      }
-      return newFilters;
-    });
-  }
-
-  getColValue(e: Egreso, key: string): string {
-    const val = e[key as keyof Egreso];
-    if (key === 'estado_y' && (!val || String(val).trim() === '')) {
-      return 'Vacío';
-    }
-    return val ? String(val) : 'N/A';
-  }
-
-  getUniqueValues(key: string, searchTerm: string): string[] {
-    const values = new Set(this.egresos().map(e => this.getColValue(e, key)));
-    return Array.from(values)
-      .filter(v => v.toLowerCase().includes((searchTerm || '').toLowerCase()))
-      .sort();
-  }
+  // Removed filter methods
 
   getStatusIcon(status: string | null): string {
     if (!status || status.trim() === '') return 'pending';
@@ -446,8 +337,7 @@ export class EgresosListComponent {
   }
 
   closeAllFilters() {
-    this.filterMenuOpen = false;
-    this.selectedColumn = null;
+    // Removed
   }
 
   async saveObservation(id: string) {

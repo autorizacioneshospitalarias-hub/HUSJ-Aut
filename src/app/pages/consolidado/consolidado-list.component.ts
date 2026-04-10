@@ -1,10 +1,13 @@
-import { Component, input, signal, computed, inject, ViewChild, ElementRef, ChangeDetectionStrategy } from '@angular/core';
+import { Component, input, signal, computed, inject, ViewChild, ElementRef, ChangeDetectionStrategy, effect } from '@angular/core';
 import { ConsolidadoRecord, ConsolidadoService, HistorialCambio, CorteEstancia } from '../../services/consolidado.service';
 import { EpsSinConvenioService } from '../../services/eps-sin-convenio.service';
 import { EpsCorteAdministrativoService } from '../../services/eps-corte-administrativo.service';
 import { MatIconModule } from '@angular/material/icon';
 import { NgClass, DatePipe } from '@angular/common';
+import { ScrollingModule } from '@angular/cdk/scrolling';
 import { SupabaseService } from '../../services/supabase.service';
+import { PacienteConsolidadoModalComponent } from './paciente-consolidado-modal.component';
+import { LucideAngularModule, Trash2, PenLine, Check, X, AlertTriangle, Clock, Search, FileText, RefreshCw, AlertCircle, ChevronDown, Filter, ArrowUpDown, Plus, Eye, History, Download, MoreHorizontal, MapPin, Building2, CheckSquare, FileSignature, LayoutDashboard, FolderHeart, PlusCircle, FolderX, UserCog, Building, SearchX, Badge, CalendarRange, User, Code, CheckCircle } from 'lucide-angular';
 
 interface TramiteHistory {
   fecha: string;
@@ -35,84 +38,100 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
   _isCorteAdmin: boolean;
   _hasTramiteHistory: boolean;
   _latestSoporte: SoporteEntry | null;
+  _latestTramiteDate: string;
+  _diasHospNum: number;
+  _hcStr: string;
+  _ingresoStr: string;
+  _idStr: string;
 }
 
 @Component({
   selector: 'app-consolidado-list',
   standalone: true,
-  imports: [MatIconModule, NgClass, DatePipe],
+  imports: [MatIconModule, NgClass, DatePipe, ScrollingModule, PacienteConsolidadoModalComponent, LucideAngularModule],
+  providers: [],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="h-full p-2 animate-in fade-in duration-300 bg-slate-50 focus:outline-none" role="button" tabindex="0">
-      <div class="border border-slate-200 rounded-lg shadow-sm overflow-hidden h-full flex flex-col relative"
+    <div class="h-full animate-in fade-in duration-300 bg-white focus:outline-none" role="button" tabindex="0">
+      <div class="h-full flex flex-col relative"
            [ngClass]="[
-             view() === 'validacion_derechos' ? 'max-w-[1000px] mx-auto shadow-md' : '',
-             hasActiveFilters() ? 'bg-slate-100/50' : 'bg-white'
+             view() === 'validacion_derechos' ? 'max-w-[1000px] mx-auto' : '',
+             hasActiveFilters() ? 'bg-slate-50' : 'bg-white'
            ]">
         <div class="overflow-auto flex-1">
           <table class="w-full text-sm text-left whitespace-nowrap">
-            <thead class="outlook-table-header text-xs uppercase sticky top-0 z-10">
+            <thead class="bg-slate-50 border-b border-slate-200 text-xs text-slate-500 sticky top-0 z-10">
               <tr>
-                <th class="px-4 py-3 font-semibold w-10">#</th>
+                <th class="px-4 py-3 font-medium w-10">#</th>
                 
                 <!-- Ubicación -->
-                <th class="px-4 py-3 font-semibold min-w-[200px]">
-                  Ubicación
+                <th class="px-4 py-3 font-medium min-w-[200px]">
+                  <div class="flex items-center gap-2">
+                    <lucide-icon [name]="MapPin" class="w-3.5 h-3.5 text-slate-400"></lucide-icon>
+                    <span>Ubicación</span>
+                  </div>
                 </th>
 
                 <!-- Paciente -->
-                <th class="px-4 py-3 font-semibold min-w-[200px]">
-                  Paciente
+                <th class="px-4 py-3 font-medium min-w-[200px]">
+                  <span>Paciente</span>
                 </th>
 
                 <!-- Admisión -->
-                <th class="px-4 py-3 font-semibold min-w-[150px]">
-                  Admisión
+                <th class="px-4 py-3 font-medium min-w-[150px]">
+                  <span>Admisión</span>
                 </th>
 
                 <!-- Entidad -->
-                <th class="px-4 py-3 font-semibold min-w-[250px] max-w-[400px]">
-                  Entidad
+                <th class="px-4 py-3 font-medium min-w-[250px] max-w-[400px]">
+                  <div class="flex items-center gap-2">
+                    <lucide-icon [name]="Building2" class="w-3.5 h-3.5 text-slate-400"></lucide-icon>
+                    <span>Entidad</span>
+                  </div>
                 </th>
 
                 <!-- Gestión Estancia -->
                 @if (view() === 'general' || view() === 'estancias_nuevas' || view() === 'seguimiento') {
-                  <th class="px-4 py-3 font-semibold min-w-[180px]">
-                    Gestión Estancia
+                  <th class="px-4 py-3 font-medium min-w-[180px]">
+                    <span>Gestión estancia</span>
                   </th>
                 }
 
-                <!-- Novedades & Observaciones -->
+                <!-- Novedades -->
                 @if (view() === 'general' || view() === 'estancias_nuevas' || view() === 'seguimiento') {
-                  <th class="px-4 py-3 font-semibold min-w-[250px]">
-                    Novedades
+                  <th class="px-4 py-3 font-medium min-w-[250px]">
+                    <span>Novedades</span>
                   </th>
                 }
 
-                <!-- En Trámite -->
+                <!-- Soportes -->
                 @if (view() === 'general' || view() === 'estancias_nuevas' || view() === 'seguimiento') {
-                  <th class="px-4 py-3 font-semibold min-w-[200px]">
-                    En Trámite
+                  <th class="px-4 py-3 font-medium w-24">
+                    <span>Soportes</span>
                   </th>
                 }
                 
-                <!-- Soportes -->
-                @if (view() === 'general' || view() === 'estancias_nuevas' || view() === 'seguimiento') {
-                  <th class="px-4 py-3 font-semibold w-24">Soportes</th>
-                }
+                <!-- Consolidado -->
+                <th class="px-4 py-3 font-medium w-24 text-center">
+                  <span>Consolidado</span>
+                </th>
 
                 @if (view() === 'pgp_aic') {
-                  <th class="px-4 py-3 font-semibold min-w-[150px]">Confirmación PGP</th>
-                  <th class="px-4 py-3 font-semibold min-w-[200px]">Justificación</th>
+                  <th class="px-4 py-3 font-medium min-w-[150px]">
+                    <span>Confirmación pgp</span>
+                  </th>
+                  <th class="px-4 py-3 font-medium min-w-[200px]">
+                    <span>Justificación</span>
+                  </th>
                 }
               </tr>
             </thead>
-            <tbody class="text-slate-600 align-top bg-slate-50/50">
-              @for (r of filteredRegistros(); track r.id; let i = $index) {
-                <tr class="border-b-4 border-slate-100 cursor-default group focus:outline-none"
+            <tbody class="text-slate-600 align-top bg-white">
+              @for (r of paginatedRegistros(); track r._idStr; let i = $index) {
+                <tr class="border-b border-slate-200 cursor-default group focus:outline-none"
                     [ngClass]="{
-                      'bg-red-200 transition-none': consolidadoService.registrosActualizados().has(r.id!.toString()),
-                      'bg-white transition-colors duration-[60000ms] hover:bg-slate-50': !consolidadoService.registrosActualizados().has(r.id!.toString())
+                      'bg-red-200 transition-none': consolidadoService.registrosActualizados().has(r._idStr),
+                      'bg-white transition-colors duration-200 hover:bg-slate-50': !consolidadoService.registrosActualizados().has(r._idStr)
                     }">
                   <!-- Enumeración -->
                   <td class="px-4 py-4 text-center">
@@ -132,7 +151,7 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                               class="transition-opacity p-1 rounded hover:bg-slate-200 shrink-0"
                               [ngClass]="r['giro_cama'] ? 'text-blue-300 hover:text-blue-600 opacity-100' : 'text-slate-400 hover:text-slate-800 opacity-0 group-hover/ubicacion:opacity-100'"
                               title="Ver Giro Cama">
-                        <mat-icon class="text-[16px] w-4 h-4">history</mat-icon>
+                        <lucide-icon [name]="History" class="w-4 h-4"></lucide-icon>
                       </button>
                     </div>
                   </td>
@@ -144,23 +163,28 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                         <div class="font-bold text-slate-900 mb-1" [class.bg-missing-value]="!r['nombre']">{{ r['nombre'] || 'N/A' }}</div>
                         <div class="text-[10px] text-slate-500 font-mono leading-tight flex flex-col gap-0.5">
                           <div class="hover:text-emerald-600 transition-colors cursor-pointer" 
-                               (click)="copyToClipboard(getStringValue(r['hc']), $event)"
-                               (keydown.enter)="copyToClipboard(getStringValue(r['hc']), $event)"
+                               (click)="copyToClipboard(r._hcStr, $event)"
+                               (keydown.enter)="copyToClipboard(r._hcStr, $event)"
                                tabindex="0" [class.bg-missing-value]="!r['hc']">HC: {{ r['hc'] || 'N/A' }}</div>
                           <div class="hover:text-emerald-600 transition-colors cursor-pointer"
-                               (click)="copyToClipboard(getStringValue(r['ingreso']), $event)"
-                               (keydown.enter)="copyToClipboard(getStringValue(r['ingreso']), $event)"
+                               (click)="copyToClipboard(r._ingresoStr, $event)"
+                               (keydown.enter)="copyToClipboard(r._ingresoStr, $event)"
                                tabindex="0" [class.bg-missing-value]="!r['ingreso']">Ing: {{ r['ingreso'] || 'N/A' }}</div>
+                          @if (r['novedad']) {
+                            <div class="text-[9px] font-medium text-amber-700 bg-amber-50 border border-amber-100 px-1.5 py-0.5 rounded mt-1">
+                              {{ r['novedad'] }}
+                            </div>
+                          }
                         </div>
                       </div>
                       <div class="flex flex-col gap-1">
                         <button (click)="openDetalleModal(r)" class="text-slate-400 hover:text-slate-800 opacity-0 group-hover/paciente:opacity-100 transition-opacity p-1 rounded hover:bg-slate-200 shrink-0" title="Ver detalle completo">
-                          <mat-icon class="text-[16px] w-4 h-4">visibility</mat-icon>
+                          <lucide-icon [name]="Eye" class="w-4 h-4"></lucide-icon>
                         </button>
                         <button (click)="openDerechosModal(r)" 
                                 [class]="r['validacion_derechos'] ? 'text-emerald-600 hover:text-emerald-700 p-1 rounded hover:bg-emerald-50 shrink-0' : 'text-slate-400 hover:text-emerald-600 opacity-0 group-hover/paciente:opacity-100 transition-opacity p-1 rounded hover:bg-emerald-50 shrink-0'" 
                                 [title]="r['validacion_derechos'] ? r._derechosEstado + ' por: ' + r['validacion_derechos'] + ' (' + (r['validacion_derechos_fecha'] | date:'dd/MM/yyyy hh:mm:ss a') + ')' : 'Validar derechos'">
-                          <mat-icon class="text-[16px] w-4 h-4">fact_check</mat-icon>
+                          <lucide-icon [name]="CheckSquare" class="w-4 h-4"></lucide-icon>
                         </button>
                       </div>
                     </div>
@@ -177,13 +201,8 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                       <span class="font-mono">{{ r['fecha_hosp'] || 'N/A' }}</span>
                     </div>
                     <div class="flex gap-2 mt-1.5">
-                      <span class="text-[9px] font-bold bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-200" title="Días Ingreso">D.I: {{ r['dias_ingr'] || 0 }}</span>
-                      <span class="text-[9px] font-bold px-1.5 py-0.5 rounded border" 
-                            [class.bg-purple-50]="toNumber(r['dias_hosp']) <= 30" [class.text-purple-700]="toNumber(r['dias_hosp']) <= 30" [class.border-purple-200]="toNumber(r['dias_hosp']) <= 30"
-                            [class.bg-red-50]="toNumber(r['dias_hosp']) > 30" [class.text-red-700]="toNumber(r['dias_hosp']) > 30" [class.border-red-200]="toNumber(r['dias_hosp']) > 30"
-                            title="Días Hospitalización">
-                        <span [class.text-red-600]="toNumber(r['dias_hosp']) > 30">D.H:</span> {{ r['dias_hosp'] || 0 }}
-                      </span>
+                      <span class="text-[9px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded" title="Días Ingreso">D.I: {{ r['dias_ingr'] || 0 }}</span>
+                      <span class="text-[9px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded" title="Días Hospitalización">D.H: {{ r['dias_hosp'] || 0 }}</span>
                     </div>
                   </td>
 
@@ -194,7 +213,7 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                         <div class="font-semibold text-slate-800 mb-0.5 flex items-center flex-wrap gap-1">
                           {{ r['entidad'] || 'N/A' }}
                           @if (r._isSinConvenio) {
-                            <span class="text-[9px] font-bold bg-slate-700 text-white px-1.5 py-0.5 rounded uppercase whitespace-nowrap">SIN CONVENIO</span>
+                            <span class="text-[9px] font-bold border border-slate-800 text-slate-800 px-1.5 py-0.5 rounded uppercase whitespace-nowrap">SIN CONVENIO</span>
                           }
                         </div>
                         <div class="text-[10px] text-slate-500 mb-0.5">Contrato: {{ r['contrato'] || 'N/A' }}</div>
@@ -206,12 +225,12 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                         @if (r._isCorteAdmin) {
                           @if (r._diasCorte >= 30) {
                             <div class="mt-1 inline-flex items-center gap-1 bg-red-50 text-red-700 border border-red-200 px-1.5 py-0.5 rounded text-[9px] font-bold" title="Han pasado 30 días o más desde el ingreso o último corte">
-                              <mat-icon class="text-[12px] w-3 h-3">warning</mat-icon>
+                              <lucide-icon [name]="AlertTriangle" class="w-3 h-3"></lucide-icon>
                               CORTE VENCIDO ({{ r._diasCorte }}d)
                             </div>
                           } @else if (r._diasCorte >= 25) {
                             <div class="mt-1 inline-flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded text-[9px] font-bold" title="Próximo a vencer corte de 30 días">
-                              <mat-icon class="text-[12px] w-3 h-3">schedule</mat-icon>
+                              <lucide-icon [name]="Clock" class="w-3 h-3"></lucide-icon>
                               CORTE PRÓXIMO ({{ r._diasCorte }}d)
                             </div>
                           }
@@ -219,7 +238,7 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                       </div>
                       <div class="flex flex-col items-center gap-1 shrink-0">
                         <button (click)="openEntidadModal(r)" class="text-slate-400 hover:text-slate-800 opacity-0 group-hover/entidad:opacity-100 transition-opacity p-1 rounded hover:bg-slate-200" title="Editar entidad">
-                          <mat-icon class="text-[16px] w-4 h-4">edit</mat-icon>
+                          <lucide-icon [name]="PenLine" class="w-4 h-4"></lucide-icon>
                         </button>
                       </div>
                     </div>
@@ -234,15 +253,21 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                           <div class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded px-2 py-1">
                             <span class="text-[10px] font-bold text-slate-600">Aut:</span>
                             @if (r['aut_estancia'] === 'SI') {
-                              <span class="w-6 h-5 rounded bg-emerald-500 text-white flex items-center justify-center text-[9px] font-bold">SI</span>
+                              <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-bold">
+                                <lucide-icon [name]="Check" class="w-2.5 h-2.5"></lucide-icon>
+                                SI
+                              </span>
                             } @else if (r['aut_estancia'] === 'NO') {
-                              <span class="w-6 h-5 rounded bg-red-500 text-white flex items-center justify-center text-[9px] font-bold">NO</span>
+                              <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 text-[9px] font-bold">
+                                <lucide-icon [name]="X" class="w-2.5 h-2.5"></lucide-icon>
+                                NO
+                              </span>
                             } @else if (r['aut_estancia'] === 'PGP') {
-                              <span class="w-6 h-5 rounded bg-blue-500 text-white flex items-center justify-center text-[9px] font-bold">PGP</span>
+                              <span class="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 flex items-center justify-center text-[9px] font-bold">PGP</span>
                             } @else if (r['aut_estancia'] === 'PP') {
-                              <span class="w-6 h-5 rounded bg-amber-500 text-white flex items-center justify-center text-[9px] font-bold">PP</span>
+                              <span class="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center text-[9px] font-bold">PP</span>
                             } @else {
-                              <span class="px-1.5 py-0.5 rounded bg-slate-200 text-slate-600 flex items-center justify-center text-[9px] font-bold">PEND</span>
+                              <span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 flex items-center justify-center text-[9px] font-bold uppercase">Pend</span>
                             }
                           </div>
                           <!-- Gestión Tag -->
@@ -255,55 +280,50 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                         </div>
                         <div class="flex flex-col items-center gap-1 shrink-0">
                           <button (click)="openGestionModal(r)" class="text-slate-400 hover:text-slate-800 opacity-0 group-hover/gestion:opacity-100 transition-opacity p-1 rounded hover:bg-slate-200 shrink-0" title="Editar gestión">
-                            <mat-icon class="text-[16px] w-4 h-4">edit</mat-icon>
+                            <lucide-icon [name]="PenLine" class="w-4 h-4"></lucide-icon>
                           </button>
-                          @if (r._hasCortes) {
-                            <mat-icon class="text-[14px] w-4 h-4 text-black" title="Tiene cortes o autorizaciones">content_cut</mat-icon>
-                          }
                         </div>
                       </div>
                     </td>
                   }
 
-                  <!-- Novedades & Observaciones -->
+                  <!-- Novedades -->
                   @if (view() === 'general' || view() === 'estancias_nuevas' || view() === 'seguimiento') {
                     <td class="px-4 py-4 text-[11px] whitespace-normal min-w-[250px]">
                       <div class="flex items-start justify-between gap-2 group/obs">
-                        <div class="flex-1 flex flex-col gap-1.5">
-                          @if (r['novedad']) {
-                            <div class="text-[10px] font-medium text-amber-700 bg-amber-50 border border-amber-100 px-2 py-1.5 rounded whitespace-pre-line">
-                              {{ r['novedad'] }}
+                        <div class="flex-1 flex flex-col gap-1">
+                          <!-- Proceso Notif -->
+                          <div class="font-bold text-slate-800 flex items-center justify-between">
+                            <span>{{ r['proceso_notif'] || 'Sin proceso' }}</span>
+                            <button (click)="openTramiteModal(r)" 
+                                    [class]="r._hasTramiteHistory ? 'text-blue-600 hover:text-blue-800' : 'text-slate-400 hover:text-slate-800 opacity-0 group-hover/obs:opacity-100'" 
+                                    class="transition-opacity p-1 rounded hover:bg-slate-200" title="Ver/Editar trámite">
+                              <lucide-icon [name]="r._hasTramiteHistory ? FileText : PenLine" class="w-3.5 h-3.5"></lucide-icon>
+                            </button>
+                          </div>
+                          
+                          <!-- Latest Tramite Note & Date -->
+                          @if (r._latestTramite) {
+                            <div class="text-[10px] text-slate-600 bg-slate-50 px-2 py-1 rounded border border-slate-100">
+                              <div class="font-medium mb-0.5">{{ r._latestTramite }}</div>
+                              @if (r._latestTramiteDate) {
+                                <div class="text-[9px] text-slate-400 font-mono">{{ r._latestTramiteDate }}</div>
+                              }
                             </div>
                           }
-                          <div class="text-[10px] text-slate-600 italic whitespace-pre-line leading-relaxed">
-                            {{ r._visibleObs }}
+
+                          <!-- Observaciones -->
+                          <div class="text-[10px] text-slate-500 italic whitespace-pre-line leading-relaxed mt-1.5 border-t border-slate-100 pt-1.5 flex justify-between items-start group/obs-btn">
+                            <span class="flex-1">{{ r._visibleObs }}</span>
+                            <button (click)="openObsModal(r)" class="text-slate-400 hover:text-slate-800 opacity-0 group-hover/obs:opacity-100 transition-opacity p-1 rounded hover:bg-slate-200 shrink-0" title="Agregar observación">
+                              <lucide-icon [name]="FileText" class="w-3.5 h-3.5"></lucide-icon>
+                            </button>
                           </div>
-                          @if (r['justificacion']) {
-                            <div class="text-[9px] text-slate-500 mt-1 whitespace-pre-line">Just: {{ r['justificacion'] }}</div>
-                          }
                         </div>
-                        <button (click)="openObsModal(r)" class="text-slate-400 hover:text-slate-800 opacity-0 group-hover/obs:opacity-100 transition-opacity p-1 rounded hover:bg-slate-200 shrink-0" title="Agregar observación">
-                          <mat-icon class="text-[16px] w-4 h-4">edit_note</mat-icon>
-                        </button>
                       </div>
                     </td>
                   }
 
-                  <!-- En Trámite -->
-                  @if (view() === 'general' || view() === 'estancias_nuevas' || view() === 'seguimiento') {
-                    <td class="px-4 py-4 text-[11px] whitespace-normal">
-                      <div class="flex items-start justify-between gap-2 group/tramite">
-                        <div class="flex-1">
-                          <div class="font-medium text-slate-800 mb-0.5">{{ r['proceso_notif'] || 'Sin proceso' }}</div>
-                          <div class="text-[10px] text-slate-500 line-clamp-2">{{ r._latestTramite }}</div>
-                        </div>
-                        <button (click)="openTramiteModal(r)" [class]="r._hasTramiteHistory ? 'text-blue-600 hover:text-blue-800 bg-blue-50' : 'text-slate-400 hover:text-slate-800 opacity-0 group-hover/tramite:opacity-100'" class="transition-opacity p-1.5 rounded hover:bg-slate-200 shrink-0" title="Ver/Editar trámite">
-                          <mat-icon class="text-[16px] w-4 h-4">{{ r._hasTramiteHistory ? 'assignment' : 'edit' }}</mat-icon>
-                        </button>
-                      </div>
-                    </td>
-                  }
-                  
                   <!-- Soportes -->
                   @if (view() === 'general' || view() === 'estancias_nuevas' || view() === 'seguimiento') {
                     <td class="px-4 py-4 text-[11px] whitespace-normal">
@@ -311,16 +331,14 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                         <div class="flex-1">
                           @if (r._latestSoporte; as latest) {
                             <div class="flex items-center gap-2 mb-2">
-                            <mat-icon [class]="latest.autorizacion_recibida ? 'text-emerald-500' : 'text-red-500'"
-                                      [title]="latest.autorizacion_recibida ? 'Autorización Recibida' : 'Autorización Pendiente'"
-                                      class="text-[18px] w-5 h-5">
-                              {{ latest.autorizacion_recibida ? 'check_circle' : 'error' }}
-                            </mat-icon>
-                            <mat-icon [class]="latest.soporte_pdf_presente ? 'text-emerald-500' : 'text-red-500'"
-                                      [title]="latest.soporte_pdf_presente ? 'PDF Presente' : 'PDF Faltante'"
-                                      class="text-[18px] w-5 h-5">
-                              picture_as_pdf
-                            </mat-icon>
+                             <lucide-icon [name]="latest.autorizacion_recibida ? CheckCircle : AlertCircle" 
+                                          [class]="latest.autorizacion_recibida ? 'text-emerald-500' : 'text-red-500'"
+                                          class="w-5 h-5">
+                             </lucide-icon>
+                             <lucide-icon [name]="latest.soporte_pdf_presente ? FileText : AlertCircle" 
+                                          [class]="latest.soporte_pdf_presente ? 'text-emerald-500' : 'text-red-500'"
+                                          class="w-5 h-5">
+                             </lucide-icon>
                             @if (latest.periodo_desde) {
                               <span class="text-[10px] text-slate-500 font-medium">
                                 Período: {{ latest.periodo_desde | date:'dd/MM' }} - {{ latest.periodo_hasta | date:'dd/MM' }}
@@ -332,9 +350,14 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                           }
                         </div>
                         <button (click)="openSoportesModal(r)" class="text-slate-400 hover:text-slate-800 opacity-0 group-hover/soportes:opacity-100 transition-opacity p-1 rounded hover:bg-slate-200 shrink-0" title="Gestionar soportes">
-                          <mat-icon class="text-[16px] w-4 h-4">history_edu</mat-icon>
+                          <lucide-icon [name]="FileSignature" class="w-4 h-4"></lucide-icon>
                         </button>
                       </div>
+                    </td>
+                    <td class="px-4 py-4 text-center">
+                      <button (click)="viewingConsolidadoRecord.set(r)" class="p-1 rounded hover:bg-slate-200">
+                        <lucide-icon [name]="LayoutDashboard" class="w-5 h-5 text-indigo-600"></lucide-icon>
+                      </button>
                     </td>
                   }
 
@@ -347,7 +370,7 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                 <tr>
                   <td colspan="8" class="px-6 py-12 text-center text-slate-500">
                     <div class="flex flex-col items-center gap-2">
-                      <mat-icon class="w-8 h-8 text-slate-300 text-[32px]">search</mat-icon>
+                      <lucide-icon [name]="Search" class="w-8 h-8 text-slate-300"></lucide-icon>
                       No se encontraron registros.
                     </div>
                   </td>
@@ -355,6 +378,24 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
               }
             </tbody>
           </table>
+        </div>
+        
+        <!-- Pagination Controls -->
+        <div class="p-3 border-t border-slate-200 bg-white flex items-center justify-between sticky bottom-0 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+          <div class="text-xs text-slate-500">
+            Mostrando {{ paginationStart() + 1 }} a {{ paginationEnd() }} de {{ filteredRegistros().length }} registros
+          </div>
+          <div class="flex items-center gap-2">
+            <select [value]="pageSize()" (change)="onPageSizeChange($event)" class="text-xs border border-slate-200 rounded px-2 py-1.5 bg-white text-slate-600 focus:outline-none focus:ring-1 focus:ring-emerald-500">
+              <option [value]="50">50 por página</option>
+              <option [value]="100">100 por página</option>
+              <option [value]="200">200 por página</option>
+              <option [value]="500">500 por página</option>
+            </select>
+            <button (click)="prevPage()" [disabled]="currentPage() === 1" class="px-3 py-1.5 border border-slate-200 rounded text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">Anterior</button>
+            <span class="text-xs font-medium text-slate-700 bg-slate-100 px-3 py-1.5 rounded">Página {{ currentPage() }} de {{ totalPages() }}</span>
+            <button (click)="nextPage()" [disabled]="currentPage() === totalPages()" class="px-3 py-1.5 border border-slate-200 rounded text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">Siguiente</button>
+          </div>
         </div>
       </div>
     </div>
@@ -365,11 +406,11 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
         <div class="bg-white rounded-xl shadow-lg w-full max-w-lg overflow-hidden flex flex-col">
           <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
             <h3 class="font-semibold text-slate-800 flex items-center gap-2">
-              <mat-icon class="text-slate-500">edit_note</mat-icon>
+              <lucide-icon [name]="PenLine" class="w-4 h-4 text-slate-500"></lucide-icon>
               Observaciones
             </h3>
             <button (click)="closeObsModal()" class="text-slate-400 hover:text-slate-600">
-              <mat-icon>close</mat-icon>
+              <lucide-icon [name]="X" class="w-4 h-4"></lucide-icon>
             </button>
           </div>
           <div class="p-4 flex-1 overflow-auto max-h-[60vh]">
@@ -384,7 +425,7 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                       </div>
                       @if (!obs.isDeleted) {
                         <button (click)="deleteObs($index)" [disabled]="saving()" class="text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors shrink-0 disabled:opacity-50" title="Eliminar observación">
-                          <mat-icon class="text-[16px] w-4 h-4">delete</mat-icon>
+                          <lucide-icon [name]="Trash2" class="w-4 h-4"></lucide-icon>
                         </button>
                       } @else {
                         <div class="text-[10px] text-slate-400 italic shrink-0 mt-0.5">
@@ -418,19 +459,19 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
 
     @if (editingTramiteRecord()) {
       <div class="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-lg w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div class="bg-white rounded-xl shadow-lg w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]">
           <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 shrink-0">
             <h3 class="font-semibold text-slate-800 flex items-center gap-2">
-              <mat-icon class="text-slate-500">assignment</mat-icon>
+              <lucide-icon [name]="FileText" class="w-4 h-4 text-slate-500"></lucide-icon>
               Historial y Registro de Trámite
             </h3>
             <button (click)="closeTramiteModal()" class="text-slate-400 hover:text-slate-600">
-              <mat-icon>close</mat-icon>
+              <lucide-icon [name]="X" class="w-4 h-4"></lucide-icon>
             </button>
           </div>
           
           <!-- Historial -->
-          <div class="p-4 overflow-y-auto flex-1 min-h-[400px] bg-slate-50/50">
+          <div class="p-4 overflow-y-auto bg-slate-50/50 max-h-[40vh] border-b border-slate-100">
             <!-- Tabs -->
             <div class="flex border-b border-slate-200 mb-4">
               <button (click)="tramiteTab.set('activos')" [class.border-emerald-500]="tramiteTab() === 'activos'" [class.text-emerald-600]="tramiteTab() === 'activos'" class="px-4 py-2 text-sm font-medium border-b-2 border-transparent transition-colors">Activos</button>
@@ -447,7 +488,7 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                         <div class="flex items-center gap-2">
                           <span class="text-[10px] text-slate-400">{{ tramite.fecha }}</span>
                           <button (click)="deleteTramite(parsedTramites().indexOf(tramite))" [disabled]="saving()" class="text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors shrink-0 disabled:opacity-50" title="Eliminar trámite">
-                            <mat-icon class="text-[14px] w-3.5 h-3.5">delete</mat-icon>
+                            <lucide-icon [name]="Trash2" class="w-3.5 h-3.5"></lucide-icon>
                           </button>
                         </div>
                       </div>
@@ -481,7 +522,7 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
           </div>
 
           <!-- Formulario -->
-          <div class="p-4 border-t border-slate-200 bg-white shrink-0 space-y-4">
+          <div class="p-4 bg-white shrink-0 space-y-3">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div class="space-y-1">
                 <label for="tipoTramiteSelect" class="text-xs font-semibold text-slate-600 uppercase">Tipo de Trámite</label>
@@ -529,18 +570,18 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
 
     @if (editingSoportesRecord()) {
       <div class="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-lg w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
-          <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+        <div class="bg-white rounded-xl shadow-lg w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]">
+          <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 shrink-0">
             <h3 class="font-semibold text-slate-800 flex items-center gap-2">
-              <mat-icon class="text-slate-500">folder_shared</mat-icon>
+              <lucide-icon [name]="FolderHeart" class="w-4 h-4 text-slate-500"></lucide-icon>
               Control de Soportes y Autorizaciones
             </h3>
             <button (click)="closeSoportesModal()" class="text-slate-400 hover:text-slate-600">
-              <mat-icon>close</mat-icon>
+              <lucide-icon [name]="X" class="w-4 h-4"></lucide-icon>
             </button>
           </div>
           
-          <div class="flex-1 overflow-y-auto p-4 space-y-6">
+          <div class="flex-1 overflow-y-auto p-4 space-y-4">
             <!-- Formulario Nueva Entrada -->
             @if (isAddingSoporte()) {
               <div class="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
@@ -588,7 +629,7 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
               </div>
             } @else {
               <button (click)="isAddingSoporte.set(true)" class="w-full py-3 border-2 border-dashed border-slate-200 rounded-lg text-slate-500 hover:border-emerald-300 hover:text-emerald-600 hover:bg-emerald-50/30 transition-all flex items-center justify-center gap-2 font-medium text-sm">
-                <mat-icon>add_circle_outline</mat-icon>
+                <lucide-icon [name]="PlusCircle" class="w-4 h-4"></lucide-icon>
                 Nueva Solicitud / Prórroga
               </button>
             }
@@ -596,13 +637,13 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
             <!-- Historial de Soportes -->
             <div class="space-y-3">
               <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-                <mat-icon class="text-[16px] w-4 h-4">history</mat-icon>
+                <lucide-icon [name]="History" class="w-4 h-4"></lucide-icon>
                 Historial de Gestiones
               </h4>
               
               @if (soportesHistory().length === 0) {
                 <div class="text-center py-8 bg-slate-50 rounded-lg border border-slate-100">
-                  <mat-icon class="text-slate-300 text-[40px] w-10 h-10 mb-2">folder_off</mat-icon>
+                  <lucide-icon [name]="FolderX" class="w-10 h-10 text-slate-300 mb-2"></lucide-icon>
                   <p class="text-sm text-slate-500">No hay registros de soportes.</p>
                 </div>
               } @else {
@@ -610,7 +651,7 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                   @for (entry of soportesHistory(); track entry.id) {
                     <div class="bg-white border border-slate-200 rounded-lg p-3 hover:shadow-md transition-shadow relative group">
                       <button (click)="removeSoporteEntry(entry.id)" class="absolute top-2 right-2 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <mat-icon class="text-[18px]">delete_outline</mat-icon>
+                        <lucide-icon [name]="Trash2" class="w-[18px] h-[18px]"></lucide-icon>
                       </button>
 
                       <div class="flex items-start gap-4">
@@ -664,11 +705,11 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
         <div class="bg-white rounded-xl shadow-lg w-full max-w-md overflow-hidden flex flex-col">
           <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
             <h3 class="font-semibold text-slate-800 flex items-center gap-2">
-              <mat-icon class="text-slate-500">manage_accounts</mat-icon>
+              <lucide-icon [name]="UserCog" class="w-4 h-4 text-slate-500"></lucide-icon>
               Gestión Estancia
             </h3>
             <button (click)="closeGestionModal()" class="text-slate-400 hover:text-slate-600">
-              <mat-icon>close</mat-icon>
+              <lucide-icon [name]="X" class="w-4 h-4"></lucide-icon>
             </button>
           </div>
           <div class="p-4 space-y-4">
@@ -725,11 +766,11 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
         <div class="bg-white rounded-xl shadow-lg w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
           <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
             <h3 class="font-semibold text-slate-800 flex items-center gap-2">
-              <mat-icon class="text-slate-500">fact_check</mat-icon>
+              <lucide-icon [name]="CheckSquare" class="w-4 h-4 text-slate-500"></lucide-icon>
               Validar Derechos del Paciente
             </h3>
             <button (click)="closeDerechosModal()" class="text-slate-400 hover:text-slate-600">
-              <mat-icon>close</mat-icon>
+              <lucide-icon [name]="X" class="w-4 h-4"></lucide-icon>
             </button>
           </div>
           
@@ -738,11 +779,11 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
             <button (click)="derechosTab.set('historial')" [class]="derechosTab() === 'historial' ? 'flex-1 py-3 text-sm font-medium text-emerald-600 border-b-2 border-emerald-600 bg-white' : 'flex-1 py-3 text-sm font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-100'">Historial</button>
           </div>
 
-          <div class="p-4 overflow-y-auto flex-1 min-h-[400px]">
+          <div class="p-4 overflow-y-auto h-[400px]">
             @if (derechosError()) {
               <div class="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl flex flex-col gap-3 shadow-sm">
                 <div class="flex items-start gap-2">
-                  <mat-icon class="text-[18px] w-4 h-4 mt-0.5 shrink-0">error_outline</mat-icon>
+                  <lucide-icon [name]="AlertCircle" class="w-4 h-4 mt-0.5 shrink-0"></lucide-icon>
                   <span class="font-medium">{{ derechosError() }}</span>
                 </div>
                 @if (derechosError()?.includes('derechos_paciente')) {
@@ -813,7 +854,7 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                 </div>
               } @else {
                 <div class="text-center p-8 text-slate-400">
-                  <mat-icon class="text-4xl mb-2 opacity-50">history</mat-icon>
+                  <lucide-icon [name]="History" class="w-10 h-10 mb-2 opacity-50"></lucide-icon>
                   <p class="text-sm">No hay historial de validaciones anteriores.</p>
                 </div>
               }
@@ -828,7 +869,7 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                 @if (saving()) {
                   <mat-icon class="animate-spin w-4 h-4 text-[16px]">refresh</mat-icon>
                 } @else {
-                  <mat-icon class="w-4 h-4 text-[16px]">delete_sweep</mat-icon>
+                  <lucide-icon [name]="Trash2" class="w-4 h-4"></lucide-icon>
                 }
                 Anular Validación
               </button>
@@ -852,11 +893,11 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
         <div class="bg-white rounded-xl shadow-lg w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
           <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 shrink-0">
             <h3 class="font-semibold text-slate-800 flex items-center gap-2">
-              <mat-icon class="text-slate-500">business</mat-icon>
+              <lucide-icon [name]="Building" class="w-4 h-4 text-slate-500"></lucide-icon>
               Entidad / EPS
             </h3>
             <button (click)="closeEntidadModal()" class="text-slate-400 hover:text-slate-600">
-              <mat-icon>close</mat-icon>
+              <lucide-icon [name]="X" class="w-4 h-4"></lucide-icon>
             </button>
           </div>
           
@@ -866,7 +907,7 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
             <button (click)="entidadTab.set('cortes')" [class.border-emerald-500]="entidadTab() === 'cortes'" [class.text-emerald-600]="entidadTab() === 'cortes'" [class.bg-white]="entidadTab() === 'cortes'" class="flex-1 py-3 text-sm font-medium border-b-2 transition-colors hover:bg-slate-100" [class.border-transparent]="entidadTab() !== 'cortes'" [class.text-slate-500]="entidadTab() !== 'cortes'">Cortes de Estancia</button>
           </div>
 
-          <div class="p-4 overflow-y-auto flex-1 min-h-[400px]">
+          <div class="p-4 overflow-y-auto h-[400px]">
             @if (entidadTab() === 'datos') {
               <div class="space-y-4">
                 <div class="space-y-1">
@@ -877,7 +918,7 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                   <label for="epsSoatInput" class="text-xs font-semibold text-slate-600 uppercase">EPS</label>
                   <div class="relative">
                     <div class="relative z-50">
-                      <mat-icon class="absolute left-2 top-1/2 -translate-y-1/2 text-[18px] w-4.5 h-4.5 text-slate-400">search</mat-icon>
+                      <lucide-icon [name]="Search" class="absolute left-2 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400"></lucide-icon>
                       <input id="epsSoatInput" #epsSoatInput [value]="epsSearchText()" 
                              (input)="onEpsInput($event)" (focus)="showEpsDropdown.set(true)" (click)="showEpsDropdown.set(true)"
                              autocomplete="off"
@@ -885,7 +926,7 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                              placeholder="Buscar EPS...">
                       @if (epsSearchText()) {
                         <button (click)="clearEps()" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none z-50" title="Limpiar EPS">
-                          <mat-icon class="text-[18px] w-4.5 h-4.5">close</mat-icon>
+                          <lucide-icon [name]="X" class="w-4 h-4"></lucide-icon>
                         </button>
                       }
                     </div>
@@ -905,12 +946,12 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                                role="button">
                             <span class="text-slate-700 group-hover:text-emerald-700">{{ eps }}</span>
                             @if (epsSearchText() === eps) {
-                              <mat-icon class="text-emerald-500 text-[16px] w-4 h-4">check</mat-icon>
+                              <lucide-icon [name]="Check" class="text-emerald-500 w-4 h-4"></lucide-icon>
                             }
                           </div>
                         } @empty {
                           <div class="p-4 text-center">
-                            <mat-icon class="text-slate-300 mb-1">search_off</mat-icon>
+                            <lucide-icon [name]="SearchX" class="text-slate-300 mb-1 w-6 h-6"></lucide-icon>
                             <div class="text-xs text-slate-500 italic">No se encontraron resultados</div>
                           </div>
                         }
@@ -931,18 +972,18 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
             } @else {
               <div class="space-y-4">
                 <!-- Alertas -->
-                @if (calcularDiasCorte(editingEntidadRecord()!) >= 30) {
+                @if (editingEntidadDiasCorte() >= 30) {
                   <div class="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg flex items-start gap-2 text-sm">
-                    <mat-icon class="text-red-500 shrink-0">warning</mat-icon>
+                    <lucide-icon [name]="AlertTriangle" class="text-red-500 shrink-0 w-5 h-5"></lucide-icon>
                     <div>
-                      <strong>¡Alerta de Corte!</strong> Han pasado {{ calcularDiasCorte(editingEntidadRecord()!) }} días desde el último corte o ingreso. Se superó el límite de 30 días.
+                      <strong>¡Alerta de Corte!</strong> Han pasado {{ editingEntidadDiasCorte() }} días desde el último corte o ingreso. Se superó el límite de 30 días.
                     </div>
                   </div>
-                } @else if (calcularDiasCorte(editingEntidadRecord()!) >= 25) {
+                } @else if (editingEntidadDiasCorte() >= 25) {
                   <div class="bg-amber-50 border border-amber-200 text-amber-700 p-3 rounded-lg flex items-start gap-2 text-sm">
-                    <mat-icon class="text-amber-500 shrink-0">schedule</mat-icon>
+                    <lucide-icon [name]="Clock" class="text-amber-500 shrink-0 w-5 h-5"></lucide-icon>
                     <div>
-                      <strong>Próximo a vencer:</strong> Han pasado {{ calcularDiasCorte(editingEntidadRecord()!) }} días. El corte debe realizarse antes de los 30 días.
+                      <strong>Próximo a vencer:</strong> Han pasado {{ editingEntidadDiasCorte() }} días. El corte debe realizarse antes de los 30 días.
                     </div>
                   </div>
                 }
@@ -966,7 +1007,7 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                           <td class="px-3 py-2">{{ corte.fecha_corte | date:'dd/MM/yyyy' }}</td>
                           <td class="px-3 py-2 text-right">
                             <button (click)="deleteCorte(corte.id)" class="text-slate-400 hover:text-red-600 transition-colors" title="Eliminar corte">
-                              <mat-icon class="text-[16px] w-4 h-4">delete</mat-icon>
+                              <lucide-icon [name]="Trash2" class="w-4 h-4"></lucide-icon>
                             </button>
                           </td>
                         </tr>
@@ -1008,7 +1049,7 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                     </div>
                   </div>
                   <button (click)="saveCorte(tipoCorteSeleccionado() === 'Otro' ? otroTipoCorte() : tipoCorteSeleccionado(), autCorteInput.value, fechaCorteInput.value)" class="w-full py-2 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded shadow-sm transition-colors flex items-center justify-center gap-2">
-                    <mat-icon class="w-4 h-4 text-[16px]">add</mat-icon>
+                    <lucide-icon [name]="Plus" class="w-4 h-4"></lucide-icon>
                     Agregar Corte
                   </button>
                 </div>
@@ -1037,7 +1078,7 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
           <div class="bg-slate-50 border-b border-slate-200 px-6 py-4 flex justify-between items-center shrink-0">
             <div class="flex items-center gap-4">
               <div class="w-10 h-10 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center">
-                <mat-icon class="text-[20px] w-5 h-5">person</mat-icon>
+                <lucide-icon [name]="User" class="w-5 h-5 text-slate-500"></lucide-icon>
               </div>
               <div>
                 <h2 class="text-lg font-bold text-slate-800">{{ viewingDetalleRecord()?.['nombre'] || 'Paciente Sin Nombre' }}</h2>
@@ -1063,7 +1104,7 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                 <!-- Section: Identificación & Ingreso -->
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                   <div class="bg-slate-100 px-4 py-3 border-b border-slate-200 flex items-center gap-2">
-                    <mat-icon class="text-slate-500 text-[18px] w-4 h-4">badge</mat-icon>
+                    <lucide-icon [name]="Badge" class="w-4 h-4 text-slate-500"></lucide-icon>
                     <h3 class="font-semibold text-slate-800 text-sm">Datos de Ingreso</h3>
                   </div>
                   <div class="p-4 grid grid-cols-2 gap-4">
@@ -1082,8 +1123,8 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                     <div class="col-span-2 sm:col-span-1">
                       <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Días Estancia</div>
                       <div class="text-sm text-slate-800 flex gap-2">
-                        <span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-200 font-bold text-xs">DI: {{ viewingDetalleRecord()?.['dias_ingr'] || 0 }}</span>
-                        <span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-200 font-bold text-xs">DH: {{ viewingDetalleRecord()?.['dias_hosp'] || 0 }}</span>
+                        <span class="text-slate-500 font-bold text-xs">DI: {{ viewingDetalleRecord()?.['dias_ingr'] || 0 }}</span>
+                        <span class="text-slate-500 font-bold text-xs">DH: {{ viewingDetalleRecord()?.['dias_hosp'] || 0 }}</span>
                       </div>
                     </div>
                   </div>
@@ -1092,7 +1133,7 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                 <!-- Section: Entidad -->
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                   <div class="bg-slate-100 px-4 py-3 border-b border-slate-200 flex items-center gap-2">
-                    <mat-icon class="text-slate-500 text-[18px] w-4 h-4">business</mat-icon>
+                    <lucide-icon [name]="Building" class="w-4 h-4 text-slate-500"></lucide-icon>
                     <h3 class="font-semibold text-slate-800 text-sm">Información de Entidad</h3>
                   </div>
                   <div class="p-4 grid grid-cols-2 gap-4">
@@ -1115,10 +1156,10 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                       </div>
                     }
                     
-                    @if (getCortesEstancia(viewingDetalleRecord()!).length > 0) {
+                    @if (viewingDetalleCortesEstancia().length > 0) {
                       <div class="col-span-2 mt-2 pt-4 border-t border-slate-100">
                         <div class="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-2 flex items-center gap-1">
-                          <mat-icon class="text-[14px] w-3 h-3">event_repeat</mat-icon>
+                          <lucide-icon [name]="CalendarRange" class="w-3 h-3 text-slate-500"></lucide-icon>
                           Control de Estancia / Cortes
                         </div>
                         
@@ -1132,7 +1173,7 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                               </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-200">
-                              @for (corte of getCortesEstancia(viewingDetalleRecord()!); track corte.id) {
+                              @for (corte of viewingDetalleCortesEstancia(); track corte.id) {
                                 <tr class="hover:bg-slate-50">
                                   <td class="px-3 py-2">{{ corte.tipo }}</td>
                                   <td class="px-3 py-2 font-medium">{{ corte.autorizacion }}</td>
@@ -1143,18 +1184,18 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                           </table>
                         </div>
                         
-                        @if (calcularDiasCorte(viewingDetalleRecord()!) >= 30) {
+                        @if (viewingDetalleDiasCorte() >= 30) {
                           <div class="mt-3 bg-red-50 border border-red-200 text-red-700 p-2.5 rounded-lg flex items-start gap-2 text-xs">
-                            <mat-icon class="text-red-500 shrink-0 text-[16px] w-4 h-4">warning</mat-icon>
+                            <lucide-icon [name]="AlertTriangle" class="text-red-500 shrink-0 w-4 h-4"></lucide-icon>
                             <div>
-                              <strong>¡Alerta de Corte!</strong> Han pasado {{ calcularDiasCorte(viewingDetalleRecord()!) }} días desde el último corte o ingreso. Se superó el límite de 30 días.
+                              <strong>¡Alerta de Corte!</strong> Han pasado {{ viewingDetalleDiasCorte() }} días desde el último corte o ingreso. Se superó el límite de 30 días.
                             </div>
                           </div>
-                        } @else if (calcularDiasCorte(viewingDetalleRecord()!) >= 25) {
+                        } @else if (viewingDetalleDiasCorte() >= 25) {
                           <div class="mt-3 bg-amber-50 border border-amber-200 text-amber-700 p-2.5 rounded-lg flex items-start gap-2 text-xs">
-                            <mat-icon class="text-amber-500 shrink-0 text-[16px] w-4 h-4">schedule</mat-icon>
+                            <lucide-icon [name]="Clock" class="text-amber-500 shrink-0 w-4 h-4"></lucide-icon>
                             <div>
-                              <strong>Próximo a vencer:</strong> Han pasado {{ calcularDiasCorte(viewingDetalleRecord()!) }} días. El corte debe realizarse antes de los 30 días.
+                              <strong>Próximo a vencer:</strong> Han pasado {{ viewingDetalleDiasCorte() }} días. El corte debe realizarse antes de los 30 días.
                             </div>
                           </div>
                         }
@@ -1166,7 +1207,7 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                 <!-- Section: Gestión -->
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                   <div class="bg-slate-100 px-4 py-3 border-b border-slate-200 flex items-center gap-2">
-                    <mat-icon class="text-slate-500 text-[18px] w-4 h-4">manage_accounts</mat-icon>
+                    <lucide-icon [name]="UserCog" class="w-4 h-4 text-slate-500"></lucide-icon>
                     <h3 class="font-semibold text-slate-800 text-sm">Gestión y Trámite</h3>
                   </div>
                   <div class="p-4 grid grid-cols-2 gap-4">
@@ -1203,7 +1244,7 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                 <!-- Section: Giro Cama -->
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden md:col-span-2 xl:col-span-3">
                   <div class="bg-slate-100 px-4 py-3 border-b border-slate-200 flex items-center gap-2">
-                    <mat-icon class="text-slate-500 text-[18px] w-4 h-4">history</mat-icon>
+                    <lucide-icon [name]="History" class="w-4 h-4 text-slate-500"></lucide-icon>
                     <h3 class="font-semibold text-slate-800 text-sm">Historial de Giro Cama</h3>
                   </div>
                   <div class="p-4">
@@ -1220,7 +1261,7 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                 <!-- Section: Novedades y Observaciones (Full Width) -->
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden md:col-span-2 xl:col-span-3">
                   <div class="bg-slate-100 px-4 py-3 border-b border-slate-200 flex items-center gap-2">
-                    <mat-icon class="text-slate-500 text-[18px] w-4 h-4">edit_note</mat-icon>
+                    <lucide-icon [name]="PenLine" class="w-4 h-4 text-slate-500"></lucide-icon>
                     <h3 class="font-semibold text-slate-800 text-sm">Novedades y Observaciones</h3>
                   </div>
                   <div class="p-4 grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -1256,7 +1297,7 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                 <!-- Section: Validación de Derechos -->
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden md:col-span-2 xl:col-span-3">
                   <div class="bg-slate-100 px-4 py-3 border-b border-slate-200 flex items-center gap-2">
-                    <mat-icon class="text-slate-500 text-[18px] w-4 h-4">fact_check</mat-icon>
+                    <lucide-icon [name]="CheckSquare" class="w-4 h-4 text-slate-500"></lucide-icon>
                     <h3 class="font-semibold text-slate-800 text-sm">Histórico de Validación de Derechos</h3>
                   </div>
                   <div class="p-4">
@@ -1264,7 +1305,7 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                       <div class="space-y-2">
                         <div class="flex items-center gap-4 p-3 bg-emerald-50 rounded-lg border border-emerald-200 text-sm">
                           <div class="flex-1">
-                            <span class="font-bold text-emerald-800">{{ getDerechosEstado(viewingDetalleRecord()) }}</span>
+                            <span class="font-bold text-emerald-800">{{ viewingDetalleDerechosEstado() }}</span>
                             <div class="text-[10px] text-emerald-600">Autorizado por: {{ viewingDetalleRecord()?.['validacion_derechos'] }}</div>
                           </div>
                           <div class="text-xs text-emerald-600 font-mono">{{ viewingDetalleRecord()?.['validacion_derechos_fecha'] | date:'dd/MM/yyyy hh:mm:ss a' }}</div>
@@ -1279,12 +1320,12 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                 <!-- Section: Todos los demás campos -->
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden md:col-span-2 xl:col-span-3">
                   <div class="bg-slate-100 px-4 py-3 border-b border-slate-200 flex items-center gap-2">
-                    <mat-icon class="text-slate-500 text-[18px] w-4 h-4">data_object</mat-icon>
+                    <lucide-icon [name]="Code" class="w-4 h-4 text-slate-500"></lucide-icon>
                     <h3 class="font-semibold text-slate-800 text-sm">Toda la Información (Datos Crudos)</h3>
                   </div>
                   <div class="p-4">
                     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                      @for (key of getRecordKeys(viewingDetalleRecord()!); track key) {
+                      @for (key of viewingDetalleKeys(); track key) {
                         <div class="bg-slate-50 p-3 rounded-lg border border-slate-100 hover:border-emerald-200 transition-colors">
                           <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 truncate" [title]="formatKey(key)">{{ formatKey(key) }}</div>
                           <div class="text-sm text-slate-800 font-medium break-words whitespace-pre-wrap">{{ viewingDetalleRecord()?.[key] || '-' }}</div>
@@ -1300,13 +1341,16 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
         </div>
       </div>
     }
+    @if (viewingConsolidadoRecord(); as record) {
+      <app-paciente-consolidado-modal [record]="record" (close)="viewingConsolidadoRecord.set(null)"></app-paciente-consolidado-modal>
+    }
     @if (viewingGiroCamaRecord()) {
       <div class="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-lg w-full max-w-2xl h-[80vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
           <div class="bg-slate-50 border-b border-slate-200 px-6 py-4 flex justify-between items-center shrink-0">
             <div class="flex items-center gap-3">
               <div class="w-10 h-10 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center">
-                <mat-icon class="text-[20px] w-5 h-5">history</mat-icon>
+                <lucide-icon [name]="History" class="w-5 h-5 text-slate-500"></lucide-icon>
               </div>
               <div>
                 <h2 class="text-lg font-bold text-slate-800">Historial de Cambios</h2>
@@ -1474,7 +1518,7 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
               }
             } @else {
               <div class="text-center py-8 text-slate-500">
-                <mat-icon class="text-[48px] w-12 h-12 mb-2 opacity-20">history_toggle_off</mat-icon>
+                <lucide-icon [name]="History" class="w-12 h-12 mb-2 opacity-20 text-slate-500"></lucide-icon>
                 <p>No hay historial de cambios registrado para este paciente.</p>
               </div>
             }
@@ -1486,6 +1530,41 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
   `
 })
 export class ConsolidadoListComponent {
+  readonly Trash2 = Trash2;
+  readonly PenLine = PenLine;
+  readonly Check = Check;
+  readonly X = X;
+  readonly AlertTriangle = AlertTriangle;
+  readonly Clock = Clock;
+  readonly Search = Search;
+  readonly FileText = FileText;
+  readonly RefreshCw = RefreshCw;
+  readonly AlertCircle = AlertCircle;
+  readonly ChevronDown = ChevronDown;
+  readonly Filter = Filter;
+  readonly ArrowUpDown = ArrowUpDown;
+  readonly Plus = Plus;
+  readonly Eye = Eye;
+  readonly History = History;
+  readonly Download = Download;
+  readonly MoreHorizontal = MoreHorizontal;
+  readonly MapPin = MapPin;
+  readonly Building2 = Building2;
+  readonly CheckSquare = CheckSquare;
+  readonly FileSignature = FileSignature;
+  readonly LayoutDashboard = LayoutDashboard;
+  readonly FolderHeart = FolderHeart;
+  readonly PlusCircle = PlusCircle;
+  readonly FolderX = FolderX;
+  readonly UserCog = UserCog;
+  readonly Building = Building;
+  readonly SearchX = SearchX;
+  readonly Badge = Badge;
+  readonly CalendarRange = CalendarRange;
+  readonly User = User;
+  readonly Code = Code;
+  readonly CheckCircle = CheckCircle;
+
   // EPS Searchable Dropdown
   epsSearchText = signal('');
   showEpsDropdown = signal(false);
@@ -1525,6 +1604,62 @@ export class ConsolidadoListComponent {
   registros = input.required<ConsolidadoRecord[]>();
   view = input<'general' | 'pgp_aic' | 'estancias_nuevas' | 'seguimiento' | 'validacion_derechos'>('general');
 
+  sortedRegistros = signal<MappedConsolidadoRecord[]>([]);
+
+  Math = Math;
+
+  constructor() {
+    // Reset to page 1 when search query change or filters change
+    effect(() => {
+      this.consolidadoService.searchQuery();
+      this.filteredRegistros();
+      this.currentPage.set(1);
+    }, { allowSignalWrites: true });
+    
+    effect(() => {
+      const all = this.registros();
+      
+      const sorted = [...all].sort((a, b) => {
+        const entA = String(a['entidad'] || '').toLowerCase();
+        const entB = String(b['entidad'] || '').toLowerCase();
+        return entA.localeCompare(entB);
+      });
+
+      const mapped = sorted.map(r => {
+        const hasCortes = this.getCortesEstancia(r).length > 0;
+        const diasCorte = this.calcularDiasCorte(r);
+        const derechosEstado = this.getDerechosEstado(r);
+        const visibleObs = this.getVisibleObservaciones(r['observaciones']);
+        const latestTramite = this.getLatestTramiteNota(r['nombre_notif']);
+        const latestTramiteDate = this.getLatestTramiteDate(r['nombre_notif']);
+        const isSinConvenio = this.epsSinConvenioService.isSinConvenio(this.getStringValue(r['entidad']));
+        const isCorteAdmin = this.epsCorteAdministrativoService.isCorteAdministrativo(this.getStringValue(r['entidad']));
+        const hasTramiteHistory = this.hasTramiteHistory(r);
+        const latestSoporte = this.getLatestSoporte(r);
+
+        const idStr = r.id ? String(r.id) : '';
+        return {
+          ...r,
+          _hasCortes: hasCortes,
+          _diasCorte: diasCorte,
+          _derechosEstado: derechosEstado,
+          _visibleObs: visibleObs,
+          _latestTramite: latestTramite,
+          _latestTramiteDate: latestTramiteDate,
+          _isSinConvenio: isSinConvenio,
+          _isCorteAdmin: isCorteAdmin,
+          _hasTramiteHistory: hasTramiteHistory,
+          _latestSoporte: latestSoporte,
+          _diasHospNum: Number(r['dias_hosp']) || 0,
+          _hcStr: r['hc'] ? String(r['hc']) : '',
+          _ingresoStr: r['ingreso'] ? String(r['ingreso']) : '',
+          _idStr: idStr
+        } as MappedConsolidadoRecord;
+      });
+      this.sortedRegistros.set(mapped);
+    });
+  }
+
   // New structured soportes signals
   soportesHistory = signal<SoporteEntry[]>([]);
   isAddingSoporte = signal<boolean>(false);
@@ -1538,6 +1673,10 @@ export class ConsolidadoListComponent {
   editingSoportesRecord = signal<ConsolidadoRecord | null>(null);
   editingGestionRecord = signal<ConsolidadoRecord | null>(null);
   editingEntidadRecord = signal<ConsolidadoRecord | null>(null);
+  editingEntidadDiasCorte = computed(() => {
+    const record = this.editingEntidadRecord();
+    return record ? this.calcularDiasCorte(record) : 0;
+  });
   cortesEstancia = signal<CorteEstancia[]>([]);
   editingDerechosRecord = signal<ConsolidadoRecord | null>(null);
   derechosError = signal<string | null>(null);
@@ -1549,6 +1688,23 @@ export class ConsolidadoListComponent {
   autInputValue = signal<string>('NO');
   gestionInputValue = signal<string>('');
   viewingDetalleRecord = signal<ConsolidadoRecord | null>(null);
+  viewingConsolidadoRecord = signal<MappedConsolidadoRecord | null>(null);
+  viewingDetalleDiasCorte = computed(() => {
+    const record = this.viewingDetalleRecord();
+    return record ? this.calcularDiasCorte(record) : 0;
+  });
+  viewingDetalleCortesEstancia = computed(() => {
+    const record = this.viewingDetalleRecord();
+    return record ? this.getCortesEstancia(record) : [];
+  });
+  viewingDetalleDerechosEstado = computed(() => {
+    const record = this.viewingDetalleRecord();
+    return record ? this.getDerechosEstado(record) : '';
+  });
+  viewingDetalleKeys = computed(() => {
+    const record = this.viewingDetalleRecord();
+    return record ? this.getRecordKeys(record) : [];
+  });
   viewingGiroCamaRecord = signal<ConsolidadoRecord | null>(null);
   historialCambios = signal<HistorialCambio[]>([]);
   historialTab = signal<'giro_cama' | 'gestion_estancia' | 'aut_estancia' | 'observaciones'>('giro_cama');
@@ -2019,46 +2175,67 @@ export class ConsolidadoListComponent {
     });
   });
 
+
+
   hasActiveFilters = computed(() => {
     return !!this.consolidadoService.searchQuery() || this.registros().length !== this.consolidadoService.allRegistros().length;
   });
 
   filteredRegistros = computed<MappedConsolidadoRecord[]>(() => {
-    const allRegistros = this.registros();
+    const all = this.sortedRegistros();
+    const globalQuery = this.consolidadoService.searchQuery().toLowerCase();
     
-    // Sort by EPS (entidad) and pre-calculate all expensive values
-    const sorted = [...allRegistros].sort((a, b) => {
-      const entA = String(a['entidad'] || '').toLowerCase();
-      const entB = String(b['entidad'] || '').toLowerCase();
-      return entA.localeCompare(entB);
-    });
+    return all.filter(r => {
+      // Global search
+      if (globalQuery) {
+        return String(r['area'] || '').toLowerCase().includes(globalQuery) ||
+               String(r['cama'] || '').toLowerCase().includes(globalQuery) ||
+               String(r['nombre'] || '').toLowerCase().includes(globalQuery) ||
+               String(r['hc'] || '').toLowerCase().includes(globalQuery) ||
+               String(r['ingreso'] || '').toLowerCase().includes(globalQuery) ||
+               String(r['entidad'] || '').toLowerCase().includes(globalQuery) ||
+               String(r['gestion_estancia'] || '').toLowerCase().includes(globalQuery) ||
+               String(r['proceso_notif'] || '').toLowerCase().includes(globalQuery) ||
+               String(r._latestTramite || '').toLowerCase().includes(globalQuery) ||
+               String(r._visibleObs || '').toLowerCase().includes(globalQuery) ||
+               String(r['novedad'] || '').toLowerCase().includes(globalQuery) ||
+               String(r._derechosEstado || '').toLowerCase().includes(globalQuery);
+      }
 
-    return sorted.map(r => {
-      const hasCortesArray = this.getCortesEstancia(r);
-      const hasCortes = hasCortesArray.length > 0 || r['aut_estancia'] === 'SI';
-      const diasCorte = this.calcularDiasCorte(r);
-      const derechosEstado = this.getDerechosEstado(r);
-      const visibleObs = this.getVisibleObservaciones(r['observaciones']);
-      const latestTramite = this.getLatestTramiteNota(r['nombre_notif']);
-      const isSinConvenio = !!(r['entidad'] && this.epsSinConvenioService.isSinConvenio(r['entidad'].toString()));
-      const isCorteAdmin = this.epsCorteAdministrativoService.isCorteAdministrativo(this.getStringValue(r['entidad']));
-      const hasTramiteHistory = this.hasTramiteHistory(r);
-      const latestSoporte = this.getLatestSoporte(r);
-
-      return {
-        ...r,
-        _hasCortes: hasCortes,
-        _diasCorte: diasCorte,
-        _derechosEstado: derechosEstado,
-        _visibleObs: visibleObs,
-        _latestTramite: latestTramite,
-        _isSinConvenio: isSinConvenio,
-        _isCorteAdmin: isCorteAdmin,
-        _hasTramiteHistory: hasTramiteHistory,
-        _latestSoporte: latestSoporte
-      } as MappedConsolidadoRecord;
+      return true;
     });
   });
+
+  // Pagination Logic
+  currentPage = signal(1);
+  pageSize = signal(50);
+  
+  totalPages = computed(() => Math.ceil(this.filteredRegistros().length / this.pageSize()) || 1);
+  
+  paginationStart = computed(() => (this.currentPage() - 1) * this.pageSize());
+  paginationEnd = computed(() => Math.min(this.paginationStart() + this.pageSize(), this.filteredRegistros().length));
+  
+  paginatedRegistros = computed(() => {
+    return this.filteredRegistros().slice(this.paginationStart(), this.paginationEnd());
+  });
+
+  nextPage() {
+    if (this.currentPage() < this.totalPages()) {
+      this.currentPage.update(p => p + 1);
+    }
+  }
+
+  prevPage() {
+    if (this.currentPage() > 1) {
+      this.currentPage.update(p => p - 1);
+    }
+  }
+
+  onPageSizeChange(event: Event) {
+    const select = event.target as HTMLSelectElement;
+    this.pageSize.set(Number(select.value));
+    this.currentPage.set(1); // Reset to first page when changing page size
+  }
 
   toNumber(val: unknown): number {
     return Number(val) || 0;
@@ -2077,6 +2254,10 @@ export class ConsolidadoListComponent {
 
   openObsModal(record: ConsolidadoRecord) {
     this.editingObsRecord.set(record);
+  }
+
+  trackById(index: number, item: MappedConsolidadoRecord) {
+    return item._idStr;
   }
 
   closeObsModal() {
@@ -2180,6 +2361,23 @@ export class ConsolidadoListComponent {
       // Fallback to string
     }
     return String(val);
+  }
+
+  getLatestTramiteDate(val: unknown): string {
+    if (!val) return '';
+    try {
+      if (typeof val === 'string' && val.trim().startsWith('[')) {
+        const parsed = JSON.parse(val);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const active = parsed.filter(p => !p.nota.includes('~~'));
+          if (active.length > 0) return active[0].fecha || '';
+          return '';
+        }
+      }
+    } catch {
+      // Fallback
+    }
+    return '';
   }
 
   activeTramites = computed(() => this.parsedTramites().filter(t => !t.isDeleted));

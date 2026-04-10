@@ -1,6 +1,7 @@
 import { Injectable, signal, PLATFORM_ID, inject, computed } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { SupabaseService } from './supabase.service';
+import { GiroCamaConfigService } from './giro-cama-config.service';
 
 export interface ConsolidadoRecord {
   id?: string;
@@ -35,7 +36,7 @@ export interface ConsolidadoRecord {
   historial_derechos?: string | null;
   derechos_paciente?: unknown;
   autorizador?: string | null;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface CorteEstancia {
@@ -68,21 +69,11 @@ export class ConsolidadoService {
   cargando = signal<boolean>(false);
   error = signal<string | null>(null);
   searchQuery = signal<string>('');
+  private giroCamaConfigService = inject(GiroCamaConfigService);
   
   // Señal computada para los registros filtrados por búsqueda
   registros = computed(() => {
-    const all = this.allRegistros();
-    const query = this.searchQuery().toLowerCase();
-    
-    if (!query) return all;
-    
-    return all.filter(r => 
-      String(r['nombre'] || '').toLowerCase().includes(query) ||
-      String(r['hc'] || '').toLowerCase().includes(query) ||
-      String(r['ingreso'] || '').toLowerCase().includes(query) ||
-      String(r['documento'] || '').toLowerCase().includes(query) ||
-      String(r['entidad'] || '').toLowerCase().includes(query)
-    );
+    return this.allRegistros();
   });
   
   registrosActualizados = signal<Set<string>>(new Set());
@@ -283,33 +274,115 @@ export class ConsolidadoService {
 
   async getGiroCama() {
     try {
+      const today = new Date();
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
-      yesterday.setHours(0, 0, 0, 0);
 
-      // MODIFICADO: usar cliente Supabase en vez de fetch
+      // Fetch from 3 days ago to avoid timezone boundary issues in the DB query
+      // and prevent Supabase from hitting the 1000 row limit on large tables
+      const fetchFrom = new Date();
+      fetchFrom.setDate(fetchFrom.getDate() - 3);
+
+      // 1. Obtener todos los cambios de cama recientes
       const { data, error } = await this.client
         .from('historial_cambios')
         .select('*')
         .eq('campo', 'cama')
-        .gte('cambiado_en', yesterday.toISOString())
+        .gte('cambiado_en', fetchFrom.toISOString())
         .order('cambiado_en', { ascending: false });
 
       if (error) throw new Error(error.message);
 
       const changes = (data as HistorialCambio[]) ?? [];
 
+      // 2. Cargar registros si no están cargados
       if (this.allRegistros().length === 0) {
         await this.loadRegistros();
       }
-
       const allRecords = this.allRegistros();
-      return changes
+
+      // 3. Mapear cambios, verificar fecha (ayer/hoy local) y que el valor realmente cambió
+      const latestChanges: HistorialCambio[] = [];
+      const seenHc = new Set<string>();
+      
+      for (const change of changes) {
+        if (!change.hc) continue;
+        
+        // Verificar si el valor antes y después son diferentes (si la configuración lo indica)
+        if (this.giroCamaConfigService.ignorarMismaCama() && change.campo === 'cama' && change.valor_antes === change.valor_nuevo) continue;
+        if (this.giroCamaConfigService.ignorarMismaArea() && change.campo === 'area' && change.valor_antes === change.valor_nuevo) continue;
+        
+        // Verificar si la fecha del cambio es ayer o hoy (en hora local del navegador)
+        // Reemplazar espacio por T para asegurar compatibilidad en todos los navegadores (ej. Safari)
+        const dateStr = change.cambiado_en.replace(' ', 'T');
+        const fechaCambio = new Date(dateStr);
+        
+        const isToday = fechaCambio.getDate() === today.getDate() && 
+                        fechaCambio.getMonth() === today.getMonth() && 
+                        fechaCambio.getFullYear() === today.getFullYear();
+                        
+        const isYesterday = fechaCambio.getDate() === yesterday.getDate() && 
+                            fechaCambio.getMonth() === yesterday.getMonth() && 
+                            fechaCambio.getFullYear() === yesterday.getFullYear();
+        
+        if (!isToday && !isYesterday) continue;
+        
+        // Solo tomar el primer cambio encontrado (el más reciente por el orden descendente)
+        const hcStr = String(change.hc).trim();
+        if (seenHc.has(hcStr)) continue;
+        
+        seenHc.add(hcStr);
+        latestChanges.push(change);
+      }
+
+      const result = latestChanges
         .map(change => {
-          const patient = allRecords.find(r => r.hc === change.hc);
-          return { ...patient, cambio: change };
+          const patient = allRecords.find(r => String(r.hc).trim() === String(change.hc).trim());
+          return patient ? { ...patient, cambio: change } : null;
         })
-        .filter(item => item.id !== undefined);
+        .filter(item => item !== null) as (ConsolidadoRecord & { cambio: HistorialCambio })[];
+
+      // Agregar pacientes cuya fecha_hosp es HOY y no están en la lista
+      for (const patient of allRecords) {
+        const fechaHospVal = patient['fecha_hosp'];
+        if (!fechaHospVal) continue;
+        
+        const fechaHospStr = String(fechaHospVal);
+        
+        const hcStr = String(patient.hc);
+        if (seenHc.has(hcStr)) continue; // Ya está en la lista por un cambio de cama
+        
+        // Parsear fecha_hosp. Puede venir como "YYYY-MM-DD" o ISO.
+        let fechaHosp = new Date(fechaHospStr);
+        if (fechaHospStr.length === 10) {
+           const [y, m, d] = fechaHospStr.split('-').map(Number);
+           fechaHosp = new Date(y, m - 1, d);
+        }
+        
+        const isHospToday = fechaHosp.getDate() === today.getDate() && 
+                            fechaHosp.getMonth() === today.getMonth() && 
+                            fechaHosp.getFullYear() === today.getFullYear();
+                            
+        if (isHospToday) {
+           seenHc.add(hcStr);
+           result.push({
+             ...patient,
+             cambio: {
+               id: 0,
+               tabla: 'base_hoy',
+               sourcerow: 0,
+               campo: 'cama',
+               valor_antes: patient.cama || 'N/A',
+               valor_nuevo: '',
+               cambiado_en: fechaHospStr,
+               hc: String(patient.hc),
+               ingreso: String(patient.ingreso)
+             }
+           });
+        }
+      }
+
+      return result;
     } catch (error) {
       console.error('Error fetching giro cama:', error);
       throw error;
@@ -372,14 +445,13 @@ export class ConsolidadoService {
     try {
       // Optimizamos la consulta seleccionando solo los campos necesarios
       const columns = `
-        id, area, cama, giro_cama, nombre, hc, ingreso, documento,
+        id, area, cama, nombre, hc, ingreso,
         validacion_derechos, validacion_derechos_fecha, fecha_ingreso, fecha_hosp, 
         dias_ingr, dias_hosp, entidad, contrato, municipio, eps_soat, 
         aut_estancia, fecha_proxima_gestion, gestion_estancia, cortes_estancia, 
         novedad, observaciones, justificacion, proceso_notif, nombre_notif, 
-        confirmacion_pgp, soportes, historial_derechos, tramite_autorizador, 
-        tramite_option, aut_estancia_obs, gestion_estancia_obs, giro_cama_obs, 
-        autorizacion_pgp, soporte_pdf_pgp, obs_pgp, fecha_egreso_entidad, updated_at
+        confirmacion_pgp, soportes, historial_derechos, 
+        fecha_egreso_entidad, updated_at
       `.replace(/\s+/g, '');
 
       const { data, error } = await this.client
@@ -389,7 +461,7 @@ export class ConsolidadoService {
 
       if (error) throw new Error(error.message);
 
-      const registros = (data as any as ConsolidadoRecord[]) ?? [];
+      const registros = (data as unknown as ConsolidadoRecord[]) ?? [];
       console.log('Registros cargados:', registros.length);
 
       this.allRegistros.set(registros);

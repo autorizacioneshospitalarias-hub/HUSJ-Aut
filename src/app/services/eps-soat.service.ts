@@ -5,11 +5,11 @@ import { SupabaseService } from './supabase.service';
 @Injectable({
   providedIn: 'root'
 })
-export class EpsSinConvenioService {
-  epsSinConvenio = signal<string[]>([]);
+export class EpsSoatService {
+  epsSoat = signal<string[]>([]);
   private platformId = inject(PLATFORM_ID);
   private supabase = inject(SupabaseService);
-  private readonly CONFIG_KEY = 'eps_sin_convenio';
+  private readonly CONFIG_KEY = 'eps_soat';
 
   constructor() {
     if (isPlatformBrowser(this.platformId)) {
@@ -22,9 +22,9 @@ export class EpsSinConvenioService {
     const stored = localStorage.getItem(this.CONFIG_KEY);
     if (stored) {
       try {
-        this.epsSinConvenio.set(JSON.parse(stored));
+        this.epsSoat.set(JSON.parse(stored));
       } catch (e) {
-        console.error('Error parsing eps_sin_convenio from localStorage', e);
+        console.error('Error parsing eps_soat from localStorage', e);
       }
     }
   }
@@ -32,13 +32,13 @@ export class EpsSinConvenioService {
   private async loadFromSupabase() {
     const data = await this.supabase.getConfig(this.CONFIG_KEY);
     if (data && Array.isArray(data)) {
-      this.epsSinConvenio.set(data);
+      this.epsSoat.set(data);
       localStorage.setItem(this.CONFIG_KEY, JSON.stringify(data));
     }
   }
 
   private async saveToStorage() {
-    const value = this.epsSinConvenio();
+    const value = this.epsSoat();
     if (isPlatformBrowser(this.platformId)) {
       localStorage.setItem(this.CONFIG_KEY, JSON.stringify(value));
     }
@@ -46,18 +46,18 @@ export class EpsSinConvenioService {
   }
 
   toggleEps(eps: string) {
-    const current = this.epsSinConvenio();
+    const current = this.epsSoat();
     if (current.includes(eps)) {
-      this.epsSinConvenio.set(current.filter(e => e !== eps));
+      this.epsSoat.set(current.filter(e => e !== eps));
     } else {
-      this.epsSinConvenio.set([...current, eps]);
+      this.epsSoat.set([...current, eps]);
     }
     this.saveToStorage();
   }
 
-  isSinConvenio(eps: string): boolean {
+  isSoat(eps: string): boolean {
     if (!eps) return false;
     const epsTrimmed = eps.trim().toUpperCase();
-    return this.epsSinConvenio().some(e => e.trim().toUpperCase() === epsTrimmed);
+    return this.epsSoat().some(e => e.trim().toUpperCase() === epsTrimmed);
   }
 }

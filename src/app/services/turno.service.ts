@@ -41,4 +41,22 @@ export class TurnoService {
       this.cargando.set(false);
     }
   }
+
+  async getTurnosByIngreso(ingreso: string): Promise<Turno[]> {
+    if (!ingreso) return [];
+    
+    try {
+      const { data, error } = await this.supabase.client
+        .from('turnos')
+        .select('*')
+        .eq('n_ingreso', ingreso);
+      
+      if (error) throw error;
+      
+      return (data || []).map((t: Turno) => ({ ...t, id: t.id || crypto.randomUUID() }));
+    } catch (error) {
+      console.error('Error fetching turnos by ingreso:', error);
+      return [];
+    }
+  }
 }

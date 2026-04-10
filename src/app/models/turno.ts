@@ -28,4 +28,5 @@ export interface Turno {
   cama: string | null;
   fecha_nacimiento: string | null;
   imagenes: string | null;
+  autorizacion?: string | null;
 }

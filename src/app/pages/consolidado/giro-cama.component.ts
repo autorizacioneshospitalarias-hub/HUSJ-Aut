@@ -168,8 +168,8 @@ interface GiroCamaRecord extends ConsolidadoRecord {
                       </td>
 
                       <td class="px-4 py-4 text-[11px]">
-                        <div class="font-bold text-slate-700">{{ item.cambio.cambiado_en | date:'dd/MM/yyyy' }}</div>
-                        <div class="text-[10px] text-slate-500 font-mono">{{ item.cambio.cambiado_en | date:'HH:mm' }}</div>
+                        <div class="font-bold text-slate-700">{{ item.cambio.cambiado_en | date:'dd/MM/yyyy':'UTC' }}</div>
+                        <div class="text-[10px] text-slate-500 font-mono">{{ item.cambio.cambiado_en | date:'HH:mm':'UTC' }}</div>
                       </td>
 
                       <td class="px-4 py-4 text-[11px] whitespace-normal">
@@ -352,7 +352,9 @@ export class GiroCamaComponent implements OnInit {
     const query = this.consolidadoService.searchQuery().toLowerCase();
     
     return this.registros().filter(r => {
-      if (!r.entidad || !this.epsGiroCamaService.isGiroCama(r.entidad)) {
+      // Comparación robusta: ignorar espacios extra y diferencias de mayúsculas/minúsculas
+      const entidadPaciente = (r.entidad || '').trim().toUpperCase();
+      if (!entidadPaciente || !this.epsGiroCamaService.isGiroCama(entidadPaciente)) {
         return false;
       }
 

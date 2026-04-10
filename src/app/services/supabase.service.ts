@@ -40,4 +40,32 @@ export class SupabaseService {
       .getPublicUrl(path);
     return data.publicUrl;
   }
+
+  async getConfig(key: string) {
+    const { data, error } = await this.supabase
+      .from('app_config')
+      .select('value')
+      .eq('key', key)
+      .single();
+      
+    if (error && error.code !== 'PGRST116') {
+      console.error(`Error fetching config ${key}:`, error);
+      return null;
+    }
+    return data?.value || null;
+  }
+
+  async setConfig(key: string, value: unknown) {
+    const { error } = await this.supabase
+      .from('app_config')
+      .upsert({ 
+        key, 
+        value, 
+        updated_at: new Date().toISOString() 
+      } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+      
+    if (error) {
+      console.error(`Error saving config ${key}:`, error);
+    }
+  }
 }

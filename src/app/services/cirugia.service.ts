@@ -1,5 +1,5 @@
 import { Injectable, signal, inject } from '@angular/core';
-import { Cirugia } from '../models/cirugia';
+import { Cirugia, SupabaseCirugia } from '../models/cirugia';
 import { SupabaseService } from './supabase.service';
 
 @Injectable({
@@ -40,7 +40,12 @@ export class CirugiaService {
       
       if (error) throw error;
       
-      const cirugiasConId = (data as Cirugia[] || []).map((c: Cirugia) => ({ ...c, id: String(c.id || crypto.randomUUID()) }));
+      const cirugiasConId = (data || []).map((c: SupabaseCirugia) => ({ 
+        ...c, 
+        id: String(c.id || crypto.randomUUID()),
+        authorization: c.authorization || c.Authorization || null,
+        auditLiquidation: c.auditLiquidation || c.AuditLiquidation || null
+      }));
       this.cirugias.set(cirugiasConId);
     } catch (error: unknown) {
       console.error('Error buscando cirugías:', error);
@@ -63,7 +68,12 @@ export class CirugiaService {
       
       if (error) throw error;
       
-      return (data as Cirugia[] || []).map((c: Cirugia) => ({ ...c, id: String(c.id || crypto.randomUUID()) }));
+      return (data || []).map((c: SupabaseCirugia) => ({ 
+        ...c, 
+        id: String(c.id || crypto.randomUUID()),
+        authorization: c.authorization || c.Authorization || null,
+        auditLiquidation: c.auditLiquidation || c.AuditLiquidation || null
+      }));
     } catch (error) {
       console.error('Error fetching cirugias by ingreso:', error);
       return [];
@@ -83,7 +93,12 @@ export class CirugiaService {
       
       if (error) throw error;
       
-      const cirugiasConId = (data as Cirugia[] || []).map((c: Cirugia) => ({ ...c, id: String(c.id || crypto.randomUUID()) }));
+      const cirugiasConId = (data || []).map((c: SupabaseCirugia) => ({ 
+        ...c, 
+        id: String(c.id || crypto.randomUUID()),
+        authorization: c.authorization || c.Authorization || null,
+        auditLiquidation: c.auditLiquidation || c.AuditLiquidation || null
+      }));
       this.cirugias.set(cirugiasConId);
     } catch (error: unknown) {
       console.error('Error cargando cirugías:', error);

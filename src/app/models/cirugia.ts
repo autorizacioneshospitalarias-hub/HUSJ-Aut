@@ -25,3 +25,8 @@ export interface Cirugia {
   assistant2: string | null;
   status: string | null; // Usado para 'Verificado'
 }
+
+export interface SupabaseCirugia extends Cirugia {
+  Authorization?: string;
+  AuditLiquidation?: string;
+}

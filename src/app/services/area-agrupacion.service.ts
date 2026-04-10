@@ -1,5 +1,6 @@
 import { Injectable, signal, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
+import { SupabaseService } from './supabase.service';
 
 @Injectable({
   providedIn: 'root'
@@ -11,10 +12,12 @@ export class AreaAgrupacionService {
   customHospitalizacion = signal<string[]>([]);
   
   private platformId = inject(PLATFORM_ID);
+  private supabase = inject(SupabaseService);
 
   constructor() {
     if (isPlatformBrowser(this.platformId)) {
       this.loadFromStorage();
+      this.loadFromSupabase();
     }
   }
 
@@ -38,11 +41,31 @@ export class AreaAgrupacionService {
     }
   }
 
-  private saveToStorage() {
-    if (isPlatformBrowser(this.platformId)) {
-      localStorage.setItem('custom_urgencias', JSON.stringify(this.customUrgencias()));
-      localStorage.setItem('custom_hospitalizacion', JSON.stringify(this.customHospitalizacion()));
+  private async loadFromSupabase() {
+    const urgenciasData = await this.supabase.getConfig('custom_urgencias');
+    if (urgenciasData && Array.isArray(urgenciasData)) {
+      this.customUrgencias.set(urgenciasData);
+      localStorage.setItem('custom_urgencias', JSON.stringify(urgenciasData));
     }
+
+    const hospData = await this.supabase.getConfig('custom_hospitalizacion');
+    if (hospData && Array.isArray(hospData)) {
+      this.customHospitalizacion.set(hospData);
+      localStorage.setItem('custom_hospitalizacion', JSON.stringify(hospData));
+    }
+  }
+
+  private async saveToStorage() {
+    const urgenciasValue = this.customUrgencias();
+    const hospValue = this.customHospitalizacion();
+    
+    if (isPlatformBrowser(this.platformId)) {
+      localStorage.setItem('custom_urgencias', JSON.stringify(urgenciasValue));
+      localStorage.setItem('custom_hospitalizacion', JSON.stringify(hospValue));
+    }
+    
+    await this.supabase.setConfig('custom_urgencias', urgenciasValue);
+    await this.supabase.setConfig('custom_hospitalizacion', hospValue);
   }
 
   setAsUrgencias(area: string) {

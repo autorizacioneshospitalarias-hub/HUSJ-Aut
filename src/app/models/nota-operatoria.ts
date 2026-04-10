@@ -24,4 +24,9 @@ export interface NotaOperatoria {
   tipo_ingreso: string | null;
   eps: string | null;
   soporte: string | null;
+  especialidad?: string | null;
+}
+
+export interface SupabaseNotaOperatoria extends NotaOperatoria {
+  Authorization?: string;
 }
