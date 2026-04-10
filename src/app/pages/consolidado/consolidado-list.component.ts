@@ -172,23 +172,16 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                                tabindex="0" [class.bg-missing-value]="!r['ingreso']">Ing: {{ r['ingreso'] || 'N/A' }}</div>
                           
                           <!-- Validación de Derechos Badge -->
-                          <div class="mt-2">
-                            @if (r['validacion_derechos']) {
+                          @if (r['validacion_derechos']) {
+                            <div class="mt-2">
                               <button (click)="openDerechosModal(r)" 
                                       class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white text-slate-700 border border-slate-200 text-[10px] font-medium hover:bg-slate-50 transition-colors shadow-sm"
                                       [title]="r._derechosEstado + ' por: ' + r['validacion_derechos'] + ' (' + (r['validacion_derechos_fecha'] | date:'dd/MM/yyyy hh:mm:ss a') + ')'">
                                 <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                                 {{ r._derechosEstado }}
                               </button>
-                            } @else {
-                              <button (click)="openDerechosModal(r)" 
-                                      class="text-[9px] font-bold text-slate-400 hover:text-emerald-600 opacity-0 group-hover/paciente:opacity-100 transition-opacity flex items-center gap-1"
-                                      title="Validar derechos">
-                                <lucide-icon [name]="CheckSquare" class="w-3 h-3"></lucide-icon>
-                                Validar derechos
-                              </button>
-                            }
-                          </div>
+                            </div>
+                          }
 
                           @if (r['novedad']) {
                             <div class="text-[9px] font-medium text-amber-700 bg-amber-50 border border-amber-100 px-1.5 py-0.5 rounded mt-1">
@@ -200,6 +193,11 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                       <div class="flex flex-col gap-1">
                         <button (click)="openDetalleModal(r)" class="text-slate-400 hover:text-slate-800 opacity-0 group-hover/paciente:opacity-100 transition-opacity p-1 rounded hover:bg-slate-200 shrink-0" title="Ver detalle completo">
                           <lucide-icon [name]="Eye" class="w-4 h-4"></lucide-icon>
+                        </button>
+                        <button (click)="openDerechosModal(r)" 
+                                class="text-slate-400 hover:text-slate-800 opacity-0 group-hover/paciente:opacity-100 transition-opacity p-1 rounded hover:bg-slate-200 shrink-0"
+                                [title]="r['validacion_derechos'] ? r._derechosEstado + ' por: ' + r['validacion_derechos'] + ' (' + (r['validacion_derechos_fecha'] | date:'dd/MM/yyyy hh:mm:ss a') + ')' : 'Validar derechos'">
+                          <lucide-icon [name]="CheckSquare" class="w-4 h-4"></lucide-icon>
                         </button>
                       </div>
                     </div>
@@ -1772,19 +1770,19 @@ export class ConsolidadoListComponent {
   }
 
   getDerechosEstado(record: ConsolidadoRecord | null): string {
-    if (!record) return 'Validado';
+    if (!record) return 'Activo';
     
     // Try new column first (with typo as requested)
     if (record['valdiacion_derechos']) {
       return record['valdiacion_derechos'] as string;
     }
     
-    if (!record['derechos_paciente']) return 'Validado';
+    if (!record['derechos_paciente']) return 'Activo';
     try {
       const parsed = typeof record['derechos_paciente'] === 'string' ? JSON.parse(record['derechos_paciente']) : record['derechos_paciente'];
-      return parsed?.estado || 'Validado';
+      return parsed?.estado || 'Activo';
     } catch {
-      return 'Validado';
+      return 'Activo';
     }
   }
 
