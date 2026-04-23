@@ -5,6 +5,7 @@ import { PacienteIngresoService } from '../../services/paciente-ingreso.service'
 import { ConsolidadoService, ConsolidadoRecord } from '../../services/consolidado.service';
 import { MatIconModule } from '@angular/material/icon';
 import { DatePipe, NgClass } from '@angular/common';
+import { LucideAngularModule, Check, X, Clock, FileText, ClipboardList } from 'lucide-angular';
 
 interface GroupedCirugia extends Cirugia {
   groupId: string;
@@ -15,10 +16,10 @@ interface GroupedCirugia extends Cirugia {
 @Component({
   selector: 'app-cirugias-list',
   standalone: true,
-  imports: [MatIconModule, NgClass, DatePipe],
+  imports: [MatIconModule, NgClass, DatePipe, LucideAngularModule],
   template: `
-    <div class="h-full p-2 animate-in fade-in duration-300 bg-slate-50 focus:outline-none" (click)="closeAllFilters()" role="button" tabindex="0" (keydown.enter)="closeAllFilters()">
-      <div class="rounded-xl shadow-sm border border-slate-200 overflow-hidden h-full flex flex-col" [ngClass]="hasActiveFilters() ? 'bg-slate-100/50' : 'bg-white'">
+    <div class="h-full animate-in fade-in duration-300 bg-white focus:outline-none" (click)="closeAllFilters()" role="button" tabindex="0" (keydown.enter)="closeAllFilters()">
+      <div class="h-full flex flex-col relative" [ngClass]="hasActiveFilters() ? 'bg-slate-50' : 'bg-white'">
         @if (activeTQFilter(); as tq) {
           <div class="bg-blue-50 border-b border-blue-200 px-4 py-2.5 flex items-center justify-between shrink-0 animate-in slide-in-from-top-2 duration-200">
             <div class="flex items-center gap-2 text-blue-800 text-sm">
@@ -41,10 +42,10 @@ interface GroupedCirugia extends Cirugia {
         }
         <div class="overflow-auto flex-1 scrollbar-hide">
           <table class="w-full text-sm text-left whitespace-nowrap">
-            <thead class="outlook-table-header text-xs uppercase sticky top-0 z-10">
+            <thead class="bg-slate-50 border-b border-slate-200 text-xs text-slate-500 sticky top-0 z-10">
               <tr>
-                <th class="px-4 py-3 font-semibold w-10">#</th>
-                <th class="px-4 py-3 font-semibold group relative cursor-pointer" (click)="toggleSort('date')">
+                <th class="px-4 py-3 font-medium w-10">#</th>
+                <th class="px-4 py-3 font-medium group relative cursor-pointer" (click)="toggleSort('date')">
                   <div class="flex items-center gap-1">
                     <span>Fecha</span>
                     <mat-icon class="text-[14px] w-4 h-4 opacity-0 group-hover:opacity-100 cursor-pointer text-slate-400 hover:text-slate-900 transition-opacity duration-200" (click)="toggleFilter('date', $event)">search</mat-icon>
@@ -58,7 +59,7 @@ interface GroupedCirugia extends Cirugia {
                     </div>
                   </div>
                 </th>
-                <th class="px-4 py-3 font-semibold group relative cursor-pointer" (click)="toggleSort('admissionNumber')">
+                <th class="px-4 py-3 font-medium group relative cursor-pointer" (click)="toggleSort('admissionNumber')">
                   <div class="flex items-center gap-1">
                     <span>Admisión</span>
                     <mat-icon class="text-[14px] w-4 h-4 opacity-0 group-hover:opacity-100 cursor-pointer text-slate-400 hover:text-slate-900 transition-opacity duration-200" (click)="toggleFilter('admissionNumber', $event)">search</mat-icon>
@@ -72,7 +73,7 @@ interface GroupedCirugia extends Cirugia {
                     </div>
                   </div>
                 </th>
-                <th class="px-4 py-3 font-semibold group relative cursor-pointer" (click)="toggleSort('patientName')">
+                <th class="px-4 py-3 font-medium group relative cursor-pointer" (click)="toggleSort('patientName')">
                   <div class="flex items-center gap-1">
                     <span>Paciente</span>
                     <mat-icon class="text-[14px] w-4 h-4 opacity-0 group-hover:opacity-100 cursor-pointer text-slate-400 hover:text-slate-900 transition-opacity duration-200" (click)="toggleFilter('patientName', $event)">search</mat-icon>
@@ -86,12 +87,12 @@ interface GroupedCirugia extends Cirugia {
                     </div>
                   </div>
                 </th>
-                <th class="px-4 py-3 font-semibold group relative cursor-pointer" (click)="toggleSort('patientName')">
+                <th class="px-4 py-3 font-medium group relative cursor-pointer" (click)="toggleSort('patientName')">
                   <div class="flex items-center gap-1">
                     <span>Ubicación</span>
                   </div>
                 </th>
-                <th class="px-4 py-3 font-semibold w-[800px] group relative cursor-pointer" (click)="toggleSort('entity')">
+                <th class="px-4 py-3 font-medium w-[800px] group relative cursor-pointer" (click)="toggleSort('entity')">
                   <div class="flex items-center gap-1">
                     <span>Entidad</span>
                     <mat-icon class="text-[14px] w-4 h-4 opacity-0 group-hover:opacity-100 cursor-pointer text-slate-400 hover:text-slate-900 transition-opacity duration-200" (click)="toggleFilter('entity', $event)">search</mat-icon>
@@ -105,7 +106,7 @@ interface GroupedCirugia extends Cirugia {
                     </div>
                   </div>
                 </th>
-                <th class="px-4 py-3 font-semibold group relative min-w-[250px] cursor-pointer" (click)="toggleSort('procedure')">
+                <th class="px-4 py-3 font-medium group relative min-w-[250px] cursor-pointer" (click)="toggleSort('procedure')">
                   <div class="flex items-center gap-1">
                     <span>Procedimiento</span>
                     <mat-icon class="text-[14px] w-4 h-4 opacity-0 group-hover:opacity-100 cursor-pointer text-slate-400 hover:text-slate-900 transition-opacity duration-200" (click)="toggleFilter('procedure', $event)">search</mat-icon>
@@ -119,7 +120,7 @@ interface GroupedCirugia extends Cirugia {
                     </div>
                   </div>
                 </th>
-                <th class="px-4 py-3 font-semibold group relative cursor-pointer" (click)="toggleSort('estado')">
+                <th class="px-4 py-3 font-medium group relative cursor-pointer" (click)="toggleSort('estado')">
                   <div class="flex items-center gap-1">
                     <span>Estado & Novedad</span>
                     <mat-icon class="text-[14px] w-4 h-4 opacity-0 group-hover:opacity-100 cursor-pointer text-slate-400 hover:text-slate-900 transition-opacity duration-200" (click)="toggleFilter('estado', $event)">search</mat-icon>
@@ -133,7 +134,7 @@ interface GroupedCirugia extends Cirugia {
                     </div>
                   </div>
                 </th>
-                <th class="px-4 py-3 font-semibold group relative cursor-pointer" (click)="toggleSort('authorization')">
+                <th class="px-4 py-3 font-medium group relative cursor-pointer" (click)="toggleSort('authorization')">
                   <div class="flex items-center gap-1">
                     <span>Autorización</span>
                     <mat-icon class="text-[14px] w-4 h-4 opacity-0 group-hover:opacity-100 cursor-pointer text-slate-400 hover:text-slate-900 transition-opacity duration-200" (click)="toggleFilter('authorization', $event)">search</mat-icon>
@@ -147,7 +148,7 @@ interface GroupedCirugia extends Cirugia {
                     </div>
                   </div>
                 </th>
-                <th class="px-4 py-3 font-semibold group relative cursor-pointer" (click)="toggleSort('surgeon')">
+                <th class="px-4 py-3 font-medium group relative cursor-pointer" (click)="toggleSort('surgeon')">
                   <div class="flex items-center gap-1">
                     <span>Especialista</span>
                     <mat-icon class="text-[14px] w-4 h-4 opacity-0 group-hover:opacity-100 cursor-pointer text-slate-400 hover:text-slate-900 transition-opacity duration-200" (click)="toggleFilter('surgeon', $event)">search</mat-icon>
@@ -161,7 +162,7 @@ interface GroupedCirugia extends Cirugia {
                     </div>
                   </div>
                 </th>
-                <th class="px-4 py-3 font-semibold group relative cursor-pointer" (click)="toggleSort('assistant1')">
+                <th class="px-4 py-3 font-medium group relative cursor-pointer" (click)="toggleSort('assistant1')">
                   <div class="flex items-center gap-1">
                     <span>Ayudantes</span>
                     <mat-icon class="text-[14px] w-4 h-4 opacity-0 group-hover:opacity-100 cursor-pointer text-slate-400 hover:text-slate-900 transition-opacity duration-200" (click)="toggleFilter('assistant1', $event)">search</mat-icon>
@@ -175,7 +176,7 @@ interface GroupedCirugia extends Cirugia {
                     </div>
                   </div>
                 </th>
-                <th class="px-4 py-3 font-semibold w-24 text-center">
+                <th class="px-4 py-3 font-medium w-24 text-center">
                   <div class="flex items-center justify-center h-full">
                     <button (click)="toggleAllVerificado($event)"
                             class="w-5 h-5 flex items-center justify-center rounded-full border transition-colors mx-auto focus:outline-none cursor-pointer"
@@ -188,13 +189,13 @@ interface GroupedCirugia extends Cirugia {
                 </th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-slate-100 text-slate-600 align-top">
+            <tbody class="text-slate-600 align-top bg-white">
               @for (c of paginatedCirugias(); track c.groupId; let i = $index) {
                 <tr (click)="cirugiaClick.emit(c)" 
                     (keydown.enter)="cirugiaClick.emit(c)"
                     tabindex="0"
-                    class="transition-colors cursor-pointer group focus:outline-none"
-                    [ngClass]="c.status === 'Verificado' ? 'bg-emerald-50/60 hover:bg-emerald-100 focus:bg-emerald-100' : (hasActiveFilters() ? 'bg-white hover:bg-slate-50 focus:bg-slate-100' : 'hover:bg-slate-50 focus:bg-slate-100')">
+                    class="border-b border-slate-200 cursor-pointer group focus:outline-none transition-colors duration-1000"
+                    [ngClass]="isRecentlyUpdated(c) ? 'animate-highlight-fade hover:bg-red-50 focus:bg-red-50' : (c.status === 'Verificado' ? 'bg-emerald-50/60 hover:bg-emerald-100 focus:bg-emerald-100' : (hasActiveFilters() ? 'bg-white hover:bg-slate-50 focus:bg-slate-100' : 'hover:bg-slate-50 focus:bg-slate-100'))">
                   <!-- Enumeración -->
                   <td class="px-4 py-3 text-center">
                     <div class="flex flex-col items-center gap-1">
@@ -224,7 +225,7 @@ interface GroupedCirugia extends Cirugia {
                            (keydown.enter)="copyToClipboard(c.admissionNumber || '', $event)"
                            tabindex="0">Ing: {{ c.admissionNumber }}</div>
                       <button (click)="openConsolidadoModal(c.admissionNumber || '', $event)" class="text-slate-400 hover:text-indigo-600 opacity-0 group-hover/ingreso:opacity-100 transition-opacity p-0.5 rounded hover:bg-indigo-50" title="Ver información del consolidado">
-                        <mat-icon class="text-[14px] w-4 h-4">info</mat-icon>
+                        <lucide-icon [name]="FileText" class="w-4 h-4"></lucide-icon>
                       </button>
                     </div>
                   </td>
@@ -259,18 +260,19 @@ interface GroupedCirugia extends Cirugia {
                     <div class="font-medium text-slate-800 line-clamp-2" title="{{ c.procedure }}">{{ c.procedure }}</div>
                     <div class="flex justify-between items-center mt-1">
                       <div class="flex items-center gap-1.5">
-                        <span class="text-[9px] text-slate-500 cursor-pointer hover:text-emerald-600 transition-colors inline-flex items-center gap-0.5 group/cups"
-                              (click)="copyToClipboard(c.cups, $event, c.groupId)"
-                              (keydown.enter)="copyToClipboard(c.cups, $event, c.groupId)"
-                              tabindex="0"
-                              title="Copiar CUPS">
-                          CUPS: {{ c.cups }}
-                          @if (copiedCupsId() === c.groupId) {
-                            <mat-icon class="text-[10px] w-3 h-3 text-emerald-500">check</mat-icon>
-                          } @else {
-                            <mat-icon class="text-[10px] w-3 h-3 opacity-0 group-hover/cups:opacity-100">content_copy</mat-icon>
-                          }
-                        </span>
+                          <span class="text-[9px] text-slate-500 cursor-pointer hover:text-emerald-600 transition-colors inline-flex items-center gap-0.5 group/cups"
+                                (click)="copyToClipboard(c.cups, $event, c.groupId)"
+                                (keydown.enter)="copyToClipboard(c.cups, $event, c.groupId)"
+                                tabindex="0"
+                                title="Copiar CUPS">
+                            <lucide-icon [name]="ClipboardList" class="w-3 h-3"></lucide-icon>
+                            CUPS: {{ c.cups }}
+                            @if (copiedCupsId() === c.groupId) {
+                              <lucide-icon [name]="Check" class="w-3 h-3 text-emerald-500"></lucide-icon>
+                            } @else {
+                              <lucide-icon [name]="ClipboardList" class="w-3 h-3 opacity-0 group-hover/cups:opacity-100"></lucide-icon>
+                            }
+                          </span>
                         <span class="text-[9px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-300 shadow-sm cursor-pointer hover:bg-blue-100 transition-colors focus:outline-none focus:ring-1 focus:ring-blue-400"
                               (click)="setTQFilter(c.admissionNumber, c.patientName, c.cups, $event)"
                               (keydown.enter)="setTQFilter(c.admissionNumber, c.patientName, c.cups, $event)"
@@ -306,10 +308,21 @@ interface GroupedCirugia extends Cirugia {
                   <td class="px-4 py-3 text-[11px] whitespace-normal group/auth">
                     <div class="flex items-start justify-between gap-2">
                       <div class="flex flex-col">
-                        @if (c.authorization) {
-                          <div class="inline-flex items-center gap-1.5 px-2 py-1 border-l-2 rounded-sm font-bold uppercase tracking-tighter mb-1" [ngClass]="getAuthStatusClass(c.authorization)">
-                            <span class="leading-tight">{{ c.authorization }}</span>
-                          </div>
+                        @if (normalizeAuth(c.authorization) === 'SI') {
+                          <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-bold mb-1 w-fit">
+                            <lucide-icon [name]="Check" class="w-2.5 h-2.5"></lucide-icon>
+                            SI
+                          </span>
+                        } @else if (normalizeAuth(c.authorization) === 'NO') {
+                          <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 text-[9px] font-bold mb-1 w-fit">
+                            <lucide-icon [name]="X" class="w-2.5 h-2.5"></lucide-icon>
+                            NO
+                          </span>
+                        } @else if (normalizeAuth(c.authorization) === 'PTE') {
+                          <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[9px] font-bold mb-1 w-fit">
+                            <lucide-icon [name]="Clock" class="w-2.5 h-2.5"></lucide-icon>
+                            PTE
+                          </span>
                         } @else {
                           <span class="text-slate-300 italic block mb-1">Sin autorizar</span>
                         }
@@ -320,7 +333,7 @@ interface GroupedCirugia extends Cirugia {
                         </div>
                       </div>
                       <button (click)="openAuthModal(c, $event)" class="text-slate-400 hover:text-emerald-600 opacity-0 group-hover/auth:opacity-100 transition-opacity p-1 rounded hover:bg-emerald-50 shrink-0" title="Registrar autorización">
-                        <mat-icon class="text-[16px] w-4 h-4">check_circle</mat-icon>
+                        <lucide-icon [name]="Check" [strokeWidth]="3" class="w-4 h-4"></lucide-icon>
                       </button>
                     </div>
                   </td>
@@ -392,9 +405,22 @@ interface GroupedCirugia extends Cirugia {
                               <div class="flex items-center gap-6 shrink-0">
                                 <div class="text-right min-w-[100px] flex items-center justify-end gap-2 group/auth">
                                   <div class="flex flex-col items-end">
-                                    <p class="text-[9px] text-slate-400 uppercase font-bold tracking-tighter">Autorización</p>
-                                    @if (det.authorization) {
-                                      <p class="text-[10px] font-mono font-bold" [ngClass]="getAuthStatusTextClass(det.authorization)">{{ det.authorization }}</p>
+                                    <p class="text-[9px] text-slate-400 uppercase font-bold tracking-tighter mb-1">Autorización</p>
+                                    @if (normalizeAuth(det.authorization) === 'SI') {
+                                      <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-bold">
+                                        <lucide-icon [name]="Check" class="w-2.5 h-2.5"></lucide-icon>
+                                        SI
+                                      </span>
+                                    } @else if (normalizeAuth(det.authorization) === 'NO') {
+                                      <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 text-[9px] font-bold">
+                                        <lucide-icon [name]="X" class="w-2.5 h-2.5"></lucide-icon>
+                                        NO
+                                      </span>
+                                    } @else if (normalizeAuth(det.authorization) === 'PTE') {
+                                      <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[9px] font-bold">
+                                        <lucide-icon [name]="Clock" class="w-2.5 h-2.5"></lucide-icon>
+                                        PTE
+                                      </span>
                                     } @else {
                                       <p class="text-[10px] text-slate-400 italic">Sin autorizar</p>
                                     }
@@ -633,6 +659,12 @@ interface GroupedCirugia extends Cirugia {
   `
 })
 export class CirugiasListComponent {
+  readonly Check = Check;
+  readonly X = X;
+  readonly Clock = Clock;
+  readonly FileText = FileText;
+  readonly ClipboardList = ClipboardList;
+
   cirugias = input.required<Cirugia[]>();
   cirugiaClick = output<Cirugia>();
   cirugiaService = inject(CirugiaService);
@@ -921,6 +953,15 @@ export class CirugiasListComponent {
     } finally {
       this.saving.set(false);
     }
+  }
+
+  isRecentlyUpdated(c: GroupedCirugia): boolean {
+    const updatedIds = this.cirugiaService.recentlyUpdatedIds();
+    return c.detalles.some((d: Cirugia) => updatedIds.has(String(d.id)));
+  }
+
+  normalizeAuth(auth: string | null | undefined): string {
+    return auth ? auth.toUpperCase() : '';
   }
 
   getAuthStatusClass(status: string | null | undefined): string {

@@ -45,13 +45,69 @@ import { Cirugia } from '../../models/cirugia';
 
       <!-- Header de la página (Only visible in Main View) -->
       @if (activeTabId() === 'main') {
-        <div class="bg-white border-b border-slate-200 px-6 py-3">
+        <div class="bg-white border-b border-slate-200 px-6 py-3 relative z-30">
           <div class="flex items-center justify-between">
-            <h2 class="text-xl font-bold text-slate-900 tracking-tight">Liquidación de Cirugías</h2>
+            <h2 class="text-xl font-bold text-slate-800 tracking-tight">Liquidación de Cirugías</h2>
             <div class="flex items-center gap-3">
               <!-- Filter Dropdown -->
               <div class="flex items-center gap-2 relative z-50">
                 <mat-icon class="text-slate-400 text-[18px] w-5 h-5">filter_alt</mat-icon>
+                
+                <!-- Fecha Filter -->
+                <input type="date" 
+                       [value]="selectedFecha()"
+                       (change)="selectedFecha.set($any($event.target).value || null)"
+                       class="text-[11px] font-medium text-slate-700 bg-white border border-slate-300 rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+
+                <!-- Ubicacion Filter -->
+                <div class="relative">
+                  <button (click)="isUbicacionDropdownOpen.set(!isUbicacionDropdownOpen())" class="flex items-center justify-between w-full text-[11px] font-medium text-slate-700 bg-white border border-slate-300 rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 min-w-[150px]">
+                    <span class="truncate">{{ selectedUbicacion() || 'Ubicación' }}</span>
+                    <mat-icon class="text-[16px] w-4 h-4 text-slate-400">arrow_drop_down</mat-icon>
+                  </button>
+
+                  @if (isUbicacionDropdownOpen()) {
+                    <div class="fixed inset-0 z-40" (click)="isUbicacionDropdownOpen.set(false)"></div>
+                    <div class="absolute right-0 mt-1 w-48 bg-white border border-slate-200 rounded-lg shadow-xl z-50 overflow-hidden">
+                      <ul class="max-h-60 overflow-y-auto py-1 text-[11px]">
+                        <li>
+                          <button (click)="selectedUbicacion.set(null); isUbicacionDropdownOpen.set(false)" class="w-full flex items-center px-3 py-1.5 hover:bg-slate-50 text-slate-700">Todos</button>
+                        </li>
+                        @for (ubicacion of ubicacionesUnicas(); track ubicacion) {
+                          <li>
+                            <button (click)="selectedUbicacion.set(ubicacion); isUbicacionDropdownOpen.set(false)" class="w-full flex items-center px-3 py-1.5 hover:bg-slate-50 text-slate-700">{{ ubicacion }}</button>
+                          </li>
+                        }
+                      </ul>
+                    </div>
+                  }
+                </div>
+
+                <!-- Entidad Filter -->
+                <div class="relative">
+                  <button (click)="isEntidadDropdownOpen.set(!isEntidadDropdownOpen())" class="flex items-center justify-between w-full text-[11px] font-medium text-slate-700 bg-white border border-slate-300 rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 min-w-[150px]">
+                    <span class="truncate">{{ selectedEntidad() || 'Entidad' }}</span>
+                    <mat-icon class="text-[16px] w-4 h-4 text-slate-400">arrow_drop_down</mat-icon>
+                  </button>
+
+                  @if (isEntidadDropdownOpen()) {
+                    <div class="fixed inset-0 z-40" (click)="isEntidadDropdownOpen.set(false)"></div>
+                    <div class="absolute right-0 mt-1 w-48 bg-white border border-slate-200 rounded-lg shadow-xl z-50 overflow-hidden">
+                      <ul class="max-h-60 overflow-y-auto py-1 text-[11px]">
+                        <li>
+                          <button (click)="selectedEntidad.set(null); isEntidadDropdownOpen.set(false)" class="w-full flex items-center px-3 py-1.5 hover:bg-slate-50 text-slate-700">Todos</button>
+                        </li>
+                        @for (entidad of entidadesUnicas(); track entidad) {
+                          <li>
+                            <button (click)="selectedEntidad.set(entidad); isEntidadDropdownOpen.set(false)" class="w-full flex items-center px-3 py-1.5 hover:bg-slate-50 text-slate-700">{{ entidad }}</button>
+                          </li>
+                        }
+                      </ul>
+                    </div>
+                  }
+                </div>
+
+                <!-- Estado Filter -->
                 <div class="relative">
                   <button (click)="isEstadoDropdownOpen.set(!isEstadoDropdownOpen())" class="flex items-center justify-between w-full text-[11px] font-medium text-slate-700 bg-white border border-slate-300 rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 min-w-[200px]">
                     <span class="truncate">{{ getEstadoButtonText() }}</span>
@@ -164,6 +220,14 @@ export class CirugiasComponent {
   estadoSearchTerm = signal('');
   selectedEstados = signal<string[] | null>(null);
 
+  isUbicacionDropdownOpen = signal(false);
+  isEntidadDropdownOpen = signal(false);
+
+  // New filters
+  selectedFecha = signal<string | null>(null);
+  selectedUbicacion = signal<string | null>(null);
+  selectedEntidad = signal<string | null>(null);
+
   constructor() {
     // Load patient admissions to enable location lookup
     this.ingresoService.loadIngresos();
@@ -227,17 +291,47 @@ export class CirugiasComponent {
     return this.estadosUnicos().filter(s => s.toLowerCase().includes(term));
   });
 
+  // Ubicacion filter
+  ubicacionesUnicas = computed(() => {
+    const records = this.cirugiaService.cirugias();
+    const ubicaciones = records.map(r => r.specialty).filter(Boolean) as string[];
+    return [...new Set(ubicaciones)].sort();
+  });
+
+  // Entidad filter
+  entidadesUnicas = computed(() => {
+    const records = this.cirugiaService.cirugias();
+    const entidades = records.map(r => r.entity).filter(Boolean) as string[];
+    return [...new Set(entidades)].sort();
+  });
+
   cirugiasFiltradas = computed(() => {
     let cirugias = this.cirugiaService.cirugias();
-    const selected = this.selectedEstados();
+    const selectedEstados = this.selectedEstados();
+    const selectedFecha = this.selectedFecha();
+    const selectedUbicacion = this.selectedUbicacion();
+    const selectedEntidad = this.selectedEntidad();
     
-    if (selected !== null) {
-      if (selected.length === 0) {
+    if (selectedEstados !== null) {
+      if (selectedEstados.length === 0) {
         cirugias = [];
       } else {
-        cirugias = cirugias.filter(c => selected.includes(c.estado as string));
+        cirugias = cirugias.filter(c => selectedEstados.includes(c.estado as string));
       }
     }
+
+    if (selectedFecha) {
+      cirugias = cirugias.filter(c => c.date === selectedFecha);
+    }
+
+    if (selectedUbicacion) {
+      cirugias = cirugias.filter(c => c.specialty === selectedUbicacion);
+    }
+
+    if (selectedEntidad) {
+      cirugias = cirugias.filter(c => c.entity === selectedEntidad);
+    }
+
     return cirugias;
   });
 

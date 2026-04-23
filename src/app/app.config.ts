@@ -1,7 +1,8 @@
 import {
   ApplicationConfig,
   provideBrowserGlobalErrorListeners,
-  LOCALE_ID
+  LOCALE_ID,
+  provideZonelessChangeDetection
 } from '@angular/core';
 import {provideRouter} from '@angular/router';
 import {registerLocaleData} from '@angular/common';
@@ -13,6 +14,7 @@ registerLocaleData(localeEsCo, 'es-CO');
 
 export const appConfig: ApplicationConfig = {
   providers: [
+    provideZonelessChangeDetection(),
     provideBrowserGlobalErrorListeners(), 
     provideRouter(routes),
     { provide: LOCALE_ID, useValue: 'es-CO' }

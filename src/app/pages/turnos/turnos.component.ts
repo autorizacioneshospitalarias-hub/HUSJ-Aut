@@ -44,9 +44,9 @@ import { Turno } from '../../models/turno';
 
       <!-- Header de la página (Only visible in Main View) -->
       @if (activeTabId() === 'main') {
-        <div class="bg-slate-50 border-b border-slate-200 px-6 py-3">
+        <div class="bg-white border-b border-slate-200 px-6 py-3 relative z-30">
           <div class="flex items-center justify-between">
-            <h2 class="text-xl font-bold text-slate-900 tracking-tight">Turnos Quirúrgicos</h2>
+            <h2 class="text-xl font-bold text-slate-800 tracking-tight">Turnos Quirúrgicos</h2>
             <button (click)="showAdvancedFilters.set(!showAdvancedFilters())" 
                     class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-colors"
                     [ngClass]="showAdvancedFilters() ? 'bg-emerald-100 text-emerald-800' : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'">

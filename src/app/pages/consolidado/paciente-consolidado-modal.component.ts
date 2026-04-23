@@ -1,6 +1,6 @@
 import { Component, input, output, inject, signal, computed, effect } from '@angular/core';
-import { MatIconModule } from '@angular/material/icon';
 import { NgClass, DatePipe } from '@angular/common';
+import { LucideAngularModule, Maximize, Minimize, X, User, LogIn, Bed, ClipboardList, Check, SearchX, FileText, Stethoscope, FileCheck2 } from 'lucide-angular';
 import { ConsolidadoRecord } from '../../services/consolidado.service';
 import { CirugiaService } from '../../services/cirugia.service';
 import { NotaOperatoriaService } from '../../services/nota-operatoria.service';
@@ -9,7 +9,7 @@ import { TurnoService } from '../../services/turno.service';
 @Component({
   selector: 'app-paciente-consolidado-modal',
   standalone: true,
-  imports: [MatIconModule, NgClass, DatePipe],
+  imports: [LucideAngularModule, NgClass],
   template: `
     <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div class="bg-white rounded-2xl shadow-2xl w-full transition-all duration-300 flex flex-col overflow-hidden animate-in zoom-in-95"
@@ -19,10 +19,10 @@ import { TurnoService } from '../../services/turno.service';
           <h2 class="text-base font-bold text-slate-800">Consolidado: {{ record()?.nombre }}</h2>
           <div class="flex items-center gap-1">
             <button (click)="isExpanded.set(!isExpanded())" class="text-slate-400 hover:text-slate-600 transition-colors p-1">
-              <mat-icon class="text-base w-4 h-4">{{ isExpanded() ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
+              <lucide-icon [name]="isExpanded() ? Minimize : Maximize" class="w-4 h-4"></lucide-icon>
             </button>
             <button (click)="close.emit()" class="text-slate-400 hover:text-slate-600 transition-colors p-1">
-              <mat-icon class="text-base w-4 h-4">close</mat-icon>
+              <lucide-icon [name]="X" class="w-4 h-4"></lucide-icon>
             </button>
           </div>
         </div>
@@ -32,8 +32,8 @@ import { TurnoService } from '../../services/turno.service';
           <!-- Paciente -->
           <div class="bg-white rounded-xl border border-slate-200 p-3 shadow-sm flex flex-col gap-2">
             <div class="flex items-center gap-2 text-slate-700 border-b border-slate-100 pb-2 mb-1">
-              <div class="bg-blue-100 p-1 rounded-md flex items-center justify-center">
-                <mat-icon class="text-[16px] w-[16px] h-[16px] text-blue-600">person</mat-icon>
+              <div class="p-1 flex items-center justify-center">
+                <lucide-icon [name]="User" class="w-4 h-4 text-slate-500"></lucide-icon>
               </div>
               <h5 class="font-bold text-xs uppercase tracking-wider">Paciente</h5>
             </div>
@@ -53,8 +53,8 @@ import { TurnoService } from '../../services/turno.service';
           <!-- Admisión -->
           <div class="bg-white rounded-xl border border-slate-200 p-3 shadow-sm flex flex-col gap-2">
             <div class="flex items-center gap-2 text-slate-700 border-b border-slate-100 pb-2 mb-1">
-              <div class="bg-emerald-100 p-1 rounded-md flex items-center justify-center">
-                <mat-icon class="text-[16px] w-[16px] h-[16px] text-emerald-600">login</mat-icon>
+              <div class="p-1 flex items-center justify-center">
+                <lucide-icon [name]="LogIn" class="w-4 h-4 text-slate-500"></lucide-icon>
               </div>
               <h5 class="font-bold text-xs uppercase tracking-wider">Admisión</h5>
             </div>
@@ -65,19 +65,19 @@ import { TurnoService } from '../../services/turno.service';
               </div>
               <div class="flex justify-between items-center gap-2">
                 <span class="text-slate-500 font-medium">F. Ingreso</span>
-                <span class="font-semibold text-slate-800">{{ r['fecha_ingreso'] }}</span>
+                <span class="font-semibold text-slate-800">{{ getIngresoDate() }}</span>
               </div>
               <div class="flex justify-between items-center gap-2">
                 <span class="text-slate-500 font-medium">F. Hosp</span>
-                <span class="font-semibold text-slate-800">{{ r['fecha_hosp'] || 'N/A' }}</span>
+                <span class="font-semibold text-slate-800">{{ getHospDate() }}</span>
               </div>
             </div>
           </div>
           <!-- Estancia -->
           <div class="bg-white rounded-xl border border-slate-200 p-3 shadow-sm flex flex-col gap-2">
             <div class="flex items-center gap-2 text-slate-700 border-b border-slate-100 pb-2 mb-1">
-              <div class="bg-amber-100 p-1 rounded-md flex items-center justify-center">
-                <mat-icon class="text-[16px] w-[16px] h-[16px] text-amber-600">hotel</mat-icon>
+              <div class="p-1 flex items-center justify-center">
+                <lucide-icon [name]="Bed" class="w-4 h-4 text-slate-500"></lucide-icon>
               </div>
               <h5 class="font-bold text-xs uppercase tracking-wider">Estancia</h5>
             </div>
@@ -99,8 +99,8 @@ import { TurnoService } from '../../services/turno.service';
           <!-- Registros -->
           <div class="bg-white rounded-xl border border-slate-200 p-3 shadow-sm flex flex-col gap-2">
             <div class="flex items-center gap-2 text-slate-700 border-b border-slate-100 pb-2 mb-1">
-              <div class="bg-indigo-100 p-1 rounded-md flex items-center justify-center">
-                <mat-icon class="text-[16px] w-[16px] h-[16px] text-indigo-600">assignment</mat-icon>
+              <div class="p-1 flex items-center justify-center">
+                <lucide-icon [name]="ClipboardList" class="w-4 h-4 text-slate-500"></lucide-icon>
               </div>
               <h5 class="font-bold text-xs uppercase tracking-wider">Registros</h5>
             </div>
@@ -139,17 +139,22 @@ import { TurnoService } from '../../services/turno.service';
               <div class="flex items-center gap-4">
                 <h3 class="text-lg font-semibold text-slate-800">{{ activeTab() }}</h3>
               </div>
-              <div class="flex gap-2">
+              <div class="flex items-center gap-2">
+                <input type="text" 
+                       (input)="searchTerm.set($any($event.target).value)" 
+                       [value]="searchTerm()"
+                       placeholder="Buscar..." 
+                       class="px-3 py-1.5 text-xs border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 focus:outline-none">
                 @if (cupsFilter()) {
                   <button (click)="cupsFilter.set(null)" class="inline-flex items-center gap-1 text-xs bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full font-medium hover:bg-emerald-200 transition-colors shadow-sm border border-emerald-200">
                     CUPS: {{ cupsFilter() }}
-                    <mat-icon class="w-4 h-4 text-[16px] leading-4">close</mat-icon>
+                    <lucide-icon [name]="X" class="w-3 h-3"></lucide-icon>
                   </button>
                 }
                 @if (folioFilter()) {
                   <button (click)="folioFilter.set(null)" class="inline-flex items-center gap-1 text-xs bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-medium hover:bg-blue-200 transition-colors shadow-sm border border-blue-200">
                     Folio: {{ folioFilter() }}
-                    <mat-icon class="w-4 h-4 text-[16px] leading-4">close</mat-icon>
+                    <lucide-icon [name]="X" class="w-3 h-3"></lucide-icon>
                   </button>
                 }
               </div>
@@ -160,11 +165,11 @@ import { TurnoService } from '../../services/turno.service';
               @if (activeTab() === 'TODO') {
                 <div class="grid grid-cols-3 gap-6 h-full overflow-hidden">
                   <!-- Turnos -->
-                  <div class="flex flex-col gap-3 overflow-hidden">
+                  <div class="flex flex-col gap-3 overflow-hidden" [class.invisible]="searchTerm() && filteredTurnos().length === 0" [class.pointer-events-none]="searchTerm() && filteredTurnos().length === 0">
                     <h4 class="font-bold text-slate-700 border-b pb-2 text-sm">Turnos ({{filteredTurnos().length}})</h4>
                     <div class="flex-1 overflow-y-auto space-y-2 pr-2">
                       @for (turno of filteredTurnos(); track turno.id) {
-                        <div class="p-3 bg-slate-50 rounded border border-slate-200 text-xs space-y-1">
+                        <div class="p-3 bg-slate-50 border-b border-slate-200 text-xs space-y-1">
                           <div class="font-bold text-slate-800">{{ turno.cups_descripcion }}</div>
                           <div class="text-slate-600"><span class="font-bold">Fecha:</span> {{ turno.fecha }} {{ formatTime(turno.hora_24_h) }}</div>
                           @if (turno.especialidad) {
@@ -173,18 +178,23 @@ import { TurnoService } from '../../services/turno.service';
                           @if (turno.autorizador) {
                             <div class="text-slate-600"><span class="font-bold">Autorizador:</span> {{ turno.autorizador }}</div>
                           }
+                          @if (turno.estado) {
+                            <div class="text-slate-600"><span class="font-bold">Estado Aut.:</span> <span class="px-1.5 py-0.5 rounded-none text-[10px] font-bold uppercase tracking-tight bg-slate-200">{{ turno.estado }}</span></div>
+                          }
                           <div class="flex flex-wrap gap-2 pt-1">
-                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-800 cursor-pointer hover:bg-emerald-200 transition-colors border border-emerald-200" (click)="cupsFilter.set(turno.cups)">
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium text-slate-700 cursor-pointer hover:bg-slate-100 transition-colors border border-slate-300" (click)="cupsFilter.set(turno.cups)">
+                              <lucide-icon [name]="Stethoscope" class="w-3 h-3"></lucide-icon>
                               CUPS: {{ turno.cups }}
                             </span>
                             @if (turno.folio) {
-                              <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800 cursor-pointer hover:bg-blue-200 transition-colors border border-blue-200" (click)="folioFilter.set(turno.folio)">
+                              <span class="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium text-slate-700 cursor-pointer hover:bg-slate-100 transition-colors border border-slate-300" (click)="folioFilter.set(turno.folio)">
+                                <lucide-icon [name]="FileText" class="w-3 h-3"></lucide-icon>
                                 Folio: {{ turno.folio }}
                               </span>
                             }
                             @if (turno.autorizacion) {
-                              <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-purple-100 text-purple-800 border border-purple-200" title="Autorización">
-                                Aut: {{ turno.autorizacion }}
+                              <span class="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium text-slate-700 border border-slate-300 bg-emerald-50 text-emerald-700 border-emerald-200 rounded-full" title="Autorización">
+                                Aut: <lucide-icon [name]="Check" class="w-3 h-3"></lucide-icon>{{ turno.autorizacion }}
                               </span>
                             }
                           </div>
@@ -193,28 +203,33 @@ import { TurnoService } from '../../services/turno.service';
                     </div>
                   </div>
                   <!-- Notas -->
-                  <div class="flex flex-col gap-3 overflow-hidden">
+                  <div class="flex flex-col gap-3 overflow-hidden" [class.invisible]="searchTerm() && filteredNotas().length === 0" [class.pointer-events-none]="searchTerm() && filteredNotas().length === 0">
                     <h4 class="font-bold text-slate-700 border-b pb-2 text-sm">Notas ({{filteredNotas().length}})</h4>
                     <div class="flex-1 overflow-y-auto space-y-2 pr-2">
                       @for (nota of filteredNotas(); track nota.id) {
-                        <div class="p-3 bg-slate-50 rounded border border-slate-200 text-xs space-y-1">
+                        <div class="p-3 bg-slate-50 border-b border-slate-200 text-xs space-y-1">
                           <div class="font-bold text-slate-800">{{ nota.procedimiento }}</div>
                           <div class="text-slate-600"><span class="font-bold">Fecha:</span> {{ nota.fecha }} {{ formatTime(nota.hora) }}</div>
                           @if (nota.autorizador) {
                             <div class="text-slate-600"><span class="font-bold">Autorizador:</span> {{ nota.autorizador }}</div>
                           }
+                          @if (nota.autorizacion) {
+                            <div class="text-slate-600"><span class="font-bold">Estado Aut.:</span> <span class="px-1.5 py-0.5 rounded-none text-[10px] font-bold uppercase tracking-tight bg-slate-200">{{ nota.autorizacion }}</span></div>
+                          }
                           <div class="flex flex-wrap gap-2 pt-1">
-                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-800 cursor-pointer hover:bg-emerald-200 transition-colors border border-emerald-200" (click)="cupsFilter.set(nota.cups)">
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium text-slate-700 cursor-pointer hover:bg-slate-100 transition-colors border border-slate-300" (click)="cupsFilter.set(nota.cups)">
+                              <lucide-icon [name]="Stethoscope" class="w-3 h-3"></lucide-icon>
                               CUPS: {{ nota.cups }}
                             </span>
                             @if (nota.folio) {
-                              <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800 cursor-pointer hover:bg-blue-200 transition-colors border border-blue-200" (click)="folioFilter.set(nota.folio)">
+                              <span class="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium text-slate-700 cursor-pointer hover:bg-slate-100 transition-colors border border-slate-300" (click)="folioFilter.set(nota.folio)">
+                                <lucide-icon [name]="FileText" class="w-3 h-3"></lucide-icon>
                                 Folio: {{ nota.folio }}
                               </span>
                             }
                             @if (nota.autorizacion) {
-                              <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-purple-100 text-purple-800 border border-purple-200" title="Autorización">
-                                Aut: {{ nota.autorizacion }}
+                              <span class="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium text-slate-700 border border-slate-300 bg-emerald-50 text-emerald-700 border-emerald-200 rounded-full" title="Autorización">
+                                Aut: <lucide-icon [name]="Check" class="w-3 h-3"></lucide-icon>{{ nota.autorizacion }}
                               </span>
                             }
                           </div>
@@ -223,11 +238,11 @@ import { TurnoService } from '../../services/turno.service';
                     </div>
                   </div>
                   <!-- Cirugías -->
-                  <div class="flex flex-col gap-3 overflow-hidden">
+                  <div class="flex flex-col gap-3 overflow-hidden" [class.invisible]="searchTerm() && filteredCirugias().length === 0" [class.pointer-events-none]="searchTerm() && filteredCirugias().length === 0">
                     <h4 class="font-bold text-slate-700 border-b pb-2 text-sm">Cirugías ({{filteredCirugias().length}})</h4>
                     <div class="flex-1 overflow-y-auto space-y-2 pr-2">
                       @for (cirugia of filteredCirugias(); track cirugia.id) {
-                        <div class="p-3 bg-slate-50 rounded border border-slate-200 text-xs space-y-1">
+                        <div class="p-3 bg-slate-50 border-b border-slate-200 text-xs space-y-1">
                           <div class="font-bold text-slate-800">{{ cirugia.procedure }}</div>
                           <div class="text-slate-600"><span class="font-bold">Fecha:</span> {{ cirugia.date }}</div>
                           @if (cirugia.specialty) {
@@ -240,7 +255,8 @@ import { TurnoService } from '../../services/turno.service';
                             <div class="text-slate-600"><span class="font-bold">Autorización:</span> {{ cirugia.authorization }}</div>
                           }
                           <div class="flex flex-wrap gap-2 pt-1">
-                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-800 cursor-pointer hover:bg-emerald-200 transition-colors border border-emerald-200" (click)="cupsFilter.set(cirugia.cups)">
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium text-slate-700 cursor-pointer hover:bg-slate-100 transition-colors border border-slate-300" (click)="cupsFilter.set(cirugia.cups)">
+                              <lucide-icon [name]="Stethoscope" class="w-3 h-3"></lucide-icon>
                               CUPS: {{ cirugia.cups }}
                             </span>
                           </div>
@@ -261,7 +277,20 @@ import { TurnoService } from '../../services/turno.service';
                           <div class="text-slate-600"><span class="font-bold">Cirujano:</span> {{ nota.cirujano }}</div>
                           <div class="text-slate-600"><span class="font-bold">CUPS:</span> {{ nota.cups }}</div>
                           <div class="text-slate-600"><span class="font-bold">Folio:</span> {{ nota.folio || 'N/A' }}</div>
-                          <div class="text-slate-600"><span class="font-bold">Autorización:</span> {{ nota.autorizacion }}</div>
+                          <div class="text-slate-600 flex items-center gap-1">
+                             <span class="font-bold">Autorización:</span>
+                             @if (nota.autorizacion === 'SI' || nota.autorizacion === 'SÍ') {
+                                <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold ml-1">
+                                    <lucide-icon [name]="Check" class="w-3 h-3"></lucide-icon> SI
+                                </span>
+                             } @else if (nota.autorizacion === 'NO') {
+                                <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 text-[10px] font-bold ml-1">
+                                    <lucide-icon [name]="X" class="w-3 h-3"></lucide-icon> NO
+                                </span>
+                             } @else {
+                                <span class="ml-1 text-[10px]">{{ nota.autorizacion }}</span>
+                             }
+                          </div>
                           <div class="col-span-2 text-slate-600"><span class="font-bold">Observación:</span> {{ nota.observacion }}</div>
                         </div>
                       }
@@ -318,7 +347,22 @@ export class PacienteConsolidadoModalComponent {
   
   tabs = ['TODO', 'Nota Operatoria', 'Liquidación Cx', 'Turnos Quirúrgicos'];
   activeTab = signal('TODO');
+  searchTerm = signal('');
   isExpanded = signal(false);
+  
+  // Icons
+  Maximize = Maximize;
+  Minimize = Minimize;
+  X = X;
+  User = User;
+  LogIn = LogIn;
+  Bed = Bed;
+  ClipboardList = ClipboardList;
+  Check = Check; // Import Check
+  SearchX = SearchX;
+  FileText = FileText; // Import FileText
+  Stethoscope = Stethoscope; // Import Stethoscope
+  FileCheck2 = FileCheck2; // Import FileCheck2
   
   cargando = signal(false);
   notas = signal<any[]>([]);
@@ -356,14 +400,41 @@ export class PacienteConsolidadoModalComponent {
     return timeStr;
   }
 
+  getIngresoDate(): string {
+    return this.formatDate(this.r['fecha_ingreso'] as string);
+  }
+
+  getHospDate(): string {
+    return this.formatDate(this.r['fecha_hosp'] as string) || 'N/A';
+  }
+
+  formatDate(dateStr: string | null | undefined): string {
+    if (!dateStr || dateStr === 'N/A') return 'N/A';
+    // Remove extra time info if present
+    const datePart = dateStr.split(' ')[0];
+    const parts = datePart.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return dateStr;
+  }
+
 // No changes needed to parseDate, just ensuring it's used correctly
   filteredNotas = computed(() => {
     let result = this.notas();
     const cFilter = this.cupsFilter();
     const fFilter = this.folioFilter();
+    const sTerm = this.searchTerm().toLowerCase();
     
     if (cFilter) result = result.filter(n => n.cups === cFilter);
     if (fFilter) result = result.filter(n => n.folio === fFilter);
+    if (sTerm) result = result.filter(n => 
+      n.procedimiento?.toLowerCase().includes(sTerm) || 
+      n.autorizador?.toLowerCase().includes(sTerm) ||
+      n.cups?.toLowerCase().includes(sTerm) ||
+      String(n.folio || '').toLowerCase().includes(sTerm) ||
+      n.observacion?.toLowerCase().includes(sTerm)
+    );
     
     return result.sort((a, b) => {
       const dateA = this.parseDate(a.fecha, a.hora);
@@ -376,9 +447,17 @@ export class PacienteConsolidadoModalComponent {
     let result = this.cirugias();
     const cFilter = this.cupsFilter();
     const fFilter = this.folioFilter();
+    const sTerm = this.searchTerm().toLowerCase();
     
     if (cFilter) result = result.filter(c => c.cups === cFilter);
     if (fFilter) result = []; // Cirugias don't have folio
+    if (sTerm) result = result.filter(c => 
+      c.procedure?.toLowerCase().includes(sTerm) ||
+      c.specialty?.toLowerCase().includes(sTerm) ||
+      c.cups?.toLowerCase().includes(sTerm) ||
+      c.authorization?.toLowerCase().includes(sTerm) ||
+      c.estado?.toLowerCase().includes(sTerm)
+    );
     
     return result.sort((a, b) => {
       const dateA = this.parseDate(a.date, null);
@@ -391,9 +470,19 @@ export class PacienteConsolidadoModalComponent {
     let result = this.turnos();
     const cFilter = this.cupsFilter();
     const fFilter = this.folioFilter();
+    const sTerm = this.searchTerm().toLowerCase();
     
     if (cFilter) result = result.filter(t => t.cups === cFilter);
     if (fFilter) result = result.filter(t => t.folio === fFilter);
+    if (sTerm) result = result.filter(t => 
+      t.cups_descripcion?.toLowerCase().includes(sTerm) ||
+      t.especialidad?.toLowerCase().includes(sTerm) ||
+      t.autorizador?.toLowerCase().includes(sTerm) ||
+      t.autorizacion?.toLowerCase().includes(sTerm) ||
+      t.cups?.toLowerCase().includes(sTerm) ||
+      t.folio?.toLowerCase().includes(sTerm) ||
+      t.estado?.toLowerCase().includes(sTerm)
+    );
     
     return result.sort((a, b) => {
       const dateA = this.parseDate(a.fecha, a.hora_24_h);

@@ -48,7 +48,7 @@ interface GroupedCirugia extends Cirugia {
       }
 
       <!-- Header de la página -->
-      <div class="bg-white border-b border-slate-200 px-6 py-3 relative z-30 shadow-sm">
+      <div class="bg-white border-b border-slate-200 px-6 py-3 relative z-30">
         <div class="flex items-center justify-between flex-wrap gap-4">
           <h2 class="text-xl font-bold text-slate-800 tracking-tight">Egresos Hospitalarios</h2>
           

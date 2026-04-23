@@ -7,7 +7,7 @@ import { NgClass, DatePipe } from '@angular/common';
 import { ScrollingModule } from '@angular/cdk/scrolling';
 import { SupabaseService } from '../../services/supabase.service';
 import { PacienteConsolidadoModalComponent } from './paciente-consolidado-modal.component';
-import { LucideAngularModule, Trash2, PenLine, Check, X, AlertTriangle, Clock, Search, FileText, RefreshCw, AlertCircle, ChevronDown, Filter, ArrowUpDown, Plus, Eye, History, Download, MoreHorizontal, MapPin, Building2, CheckSquare, FileSignature, LayoutDashboard, FolderHeart, PlusCircle, FolderX, UserCog, Building, SearchX, Badge, CalendarRange, User, Code, CheckCircle } from 'lucide-angular';
+import { LucideAngularModule, Trash2, PenLine, Check, X, AlertTriangle, Clock, Search, FileText, RefreshCw, AlertCircle, ChevronDown, Filter, ArrowUpDown, ArrowUp, ArrowDown, Plus, Eye, History, Download, MoreHorizontal, MapPin, Building2, CheckSquare, FileSignature, LayoutDashboard, FolderHeart, PlusCircle, FolderX, UserCog, Building, SearchX, Badge, CalendarRange, User, Code, CheckCircle } from 'lucide-angular';
 
 interface TramiteHistory {
   fecha: string;
@@ -43,6 +43,8 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
   _hcStr: string;
   _ingresoStr: string;
   _idStr: string;
+  _fechaIngresoFormatted: string;
+  _fechaHospFormatted: string;
 }
 
 @Component({
@@ -59,92 +61,150 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
              hasActiveFilters() ? 'bg-slate-50' : 'bg-white'
            ]">
         <div class="overflow-auto flex-1">
-          <table class="w-full text-sm text-left whitespace-nowrap">
-            <thead class="bg-slate-50 border-b border-slate-200 text-xs text-slate-500 sticky top-0 z-10">
-              <tr>
-                <th class="px-4 py-3 font-medium w-10">#</th>
+          <table class="w-full text-sm text-left whitespace-nowrap border-separate border-spacing-y-1.5">
+            <thead class="text-[11px] font-medium text-slate-500 uppercase tracking-wider sticky top-0 z-10 transition-colors">
+              <tr class="bg-slate-100/80 backdrop-blur-md shadow-sm">
+                <th class="px-4 py-3 first:rounded-l-lg last:rounded-r-lg w-10">#</th>
                 
                 <!-- Ubicación -->
-                <th class="px-4 py-3 font-medium min-w-[200px]">
+                <th class="px-4 py-3 first:rounded-l-lg last:rounded-r-lg min-w-[200px] cursor-pointer hover:text-slate-700 transition-colors group/header relative" (click)="toggleSort('area')">
                   <div class="flex items-center gap-2">
                     <lucide-icon [name]="MapPin" class="w-3.5 h-3.5 text-slate-400"></lucide-icon>
                     <span>Ubicación</span>
+                    <button class="opacity-0 group-hover/header:opacity-100 transition-opacity ml-1 p-1 hover:bg-slate-200 rounded" (click)="toggleColumnFilterInput('area', $event)">
+                      <lucide-icon [name]="Filter" class="w-3 h-3 text-slate-500" [class.text-emerald-500]="columnFilters()['area']"></lucide-icon>
+                    </button>
+                    <lucide-icon [name]="getSortIcon('area')" class="w-3.5 h-3.5 text-black ml-auto"></lucide-icon>
                   </div>
+                  @if (activeColumnFilterInputs()['area']) {
+                    <div class="absolute left-4 right-4 top-10 z-20" (click)="$event.stopPropagation()">
+                      <input type="text" placeholder="Filtrar..." [value]="columnFilters()['area'] || ''" (input)="setColumnFilter('area', $any($event.target).value)" class="w-full text-xs p-1.5 border border-emerald-300 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-md">
+                    </div>
+                  }
                 </th>
 
                 <!-- Paciente -->
-                <th class="px-4 py-3 font-medium min-w-[200px]">
-                  <span>Paciente</span>
+                <th class="px-4 py-3 first:rounded-l-lg last:rounded-r-lg font-medium min-w-[200px] group/header relative">
+                  <div class="flex items-center gap-2">
+                    <span>Paciente</span>
+                    <button class="opacity-0 group-hover/header:opacity-100 transition-opacity ml-1 p-1 hover:bg-slate-200 rounded" (click)="toggleColumnFilterInput('paciente', $event)">
+                      <lucide-icon [name]="Filter" class="w-3 h-3 text-slate-500" [class.text-emerald-500]="columnFilters()['paciente']"></lucide-icon>
+                    </button>
+                  </div>
+                  @if (activeColumnFilterInputs()['paciente']) {
+                    <div class="absolute left-4 right-4 top-10 z-20" (click)="$event.stopPropagation()">
+                      <input type="text" placeholder="Filtrar..." [value]="columnFilters()['paciente'] || ''" (input)="setColumnFilter('paciente', $any($event.target).value)" class="w-full text-xs p-1.5 border border-emerald-300 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-md">
+                    </div>
+                  }
                 </th>
 
                 <!-- Admisión -->
-                <th class="px-4 py-3 font-medium min-w-[150px]">
-                  <span>Admisión</span>
+                <th class="px-4 py-3 first:rounded-l-lg last:rounded-r-lg font-medium min-w-[150px] group/header relative">
+                  <div class="flex items-center gap-2">
+                    <span>Admisión</span>
+                    <button class="opacity-0 group-hover/header:opacity-100 transition-opacity ml-1 p-1 hover:bg-slate-200 rounded" (click)="toggleColumnFilterInput('admision', $event)">
+                      <lucide-icon [name]="Filter" class="w-3 h-3 text-slate-500" [class.text-emerald-500]="columnFilters()['admision']"></lucide-icon>
+                    </button>
+                  </div>
+                  @if (activeColumnFilterInputs()['admision']) {
+                    <div class="absolute left-4 right-4 top-10 z-20" (click)="$event.stopPropagation()">
+                      <input type="text" placeholder="Filtrar..." [value]="columnFilters()['admision'] || ''" (input)="setColumnFilter('admision', $any($event.target).value)" class="w-full text-xs p-1.5 border border-emerald-300 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-md">
+                    </div>
+                  }
                 </th>
 
                 <!-- Entidad -->
-                <th class="px-4 py-3 font-medium min-w-[250px] max-w-[400px]">
+                <th class="px-4 py-3 first:rounded-l-lg last:rounded-r-lg font-medium min-w-[250px] max-w-[400px] cursor-pointer hover:text-slate-700 transition-colors group/header relative" (click)="toggleSort('entidad')">
                   <div class="flex items-center gap-2">
                     <lucide-icon [name]="Building2" class="w-3.5 h-3.5 text-slate-400"></lucide-icon>
                     <span>Entidad</span>
+                    <button class="opacity-0 group-hover/header:opacity-100 transition-opacity ml-1 p-1 hover:bg-slate-200 rounded" (click)="toggleColumnFilterInput('entidad', $event)">
+                      <lucide-icon [name]="Filter" class="w-3 h-3 text-slate-500" [class.text-emerald-500]="columnFilters()['entidad']"></lucide-icon>
+                    </button>
+                    <lucide-icon [name]="getSortIcon('entidad')" class="w-3.5 h-3.5 text-black ml-auto"></lucide-icon>
                   </div>
+                  @if (activeColumnFilterInputs()['entidad']) {
+                    <div class="absolute left-4 right-4 top-10 z-20" (click)="$event.stopPropagation()">
+                      <input type="text" placeholder="Filtrar..." [value]="columnFilters()['entidad'] || ''" (input)="setColumnFilter('entidad', $any($event.target).value)" class="w-full text-xs p-1.5 border border-emerald-300 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-md">
+                    </div>
+                  }
                 </th>
 
                 <!-- Gestión Estancia -->
                 @if (view() === 'general' || view() === 'estancias_nuevas' || view() === 'seguimiento') {
-                  <th class="px-4 py-3 font-medium min-w-[180px]">
-                    <span>Gestión estancia</span>
+                  <th class="px-4 py-3 first:rounded-l-lg last:rounded-r-lg font-medium min-w-[180px] group/header relative">
+                    <div class="flex items-center gap-2">
+                      <span>Gestión estancia</span>
+                      <button class="opacity-0 group-hover/header:opacity-100 transition-opacity ml-1 p-1 hover:bg-slate-200 rounded" (click)="toggleColumnFilterInput('gestion', $event)">
+                        <lucide-icon [name]="Filter" class="w-3 h-3 text-slate-500" [class.text-emerald-500]="columnFilters()['gestion']"></lucide-icon>
+                      </button>
+                    </div>
+                    @if (activeColumnFilterInputs()['gestion']) {
+                      <div class="absolute left-4 right-4 top-10 z-20" (click)="$event.stopPropagation()">
+                        <input type="text" placeholder="Filtrar..." [value]="columnFilters()['gestion'] || ''" (input)="setColumnFilter('gestion', $any($event.target).value)" class="w-full text-xs p-1.5 border border-emerald-300 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-md">
+                      </div>
+                    }
                   </th>
                 }
 
                 <!-- Novedades -->
                 @if (view() === 'general' || view() === 'estancias_nuevas' || view() === 'seguimiento') {
-                  <th class="px-4 py-3 font-medium min-w-[250px]">
-                    <span>Novedades</span>
+                  <th class="px-4 py-3 first:rounded-l-lg last:rounded-r-lg font-medium min-w-[250px] group/header relative">
+                    <div class="flex items-center gap-2">
+                      <span>Novedades</span>
+                      <button class="opacity-0 group-hover/header:opacity-100 transition-opacity ml-1 p-1 hover:bg-slate-200 rounded" (click)="toggleColumnFilterInput('novedades', $event)">
+                        <lucide-icon [name]="Filter" class="w-3 h-3 text-slate-500" [class.text-emerald-500]="columnFilters()['novedades']"></lucide-icon>
+                      </button>
+                    </div>
+                    @if (activeColumnFilterInputs()['novedades']) {
+                      <div class="absolute left-4 right-4 top-10 z-20" (click)="$event.stopPropagation()">
+                        <input type="text" placeholder="Filtrar..." [value]="columnFilters()['novedades'] || ''" (input)="setColumnFilter('novedades', $any($event.target).value)" class="w-full text-xs p-1.5 border border-emerald-300 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-md">
+                      </div>
+                    }
                   </th>
                 }
 
                 <!-- Soportes -->
                 @if (view() === 'general' || view() === 'estancias_nuevas' || view() === 'seguimiento') {
-                  <th class="px-4 py-3 font-medium w-24">
+                  <th class="px-4 py-3 first:rounded-l-lg last:rounded-r-lg font-medium w-24">
                     <span>Soportes</span>
                   </th>
                 }
                 
                 <!-- Consolidado -->
-                <th class="px-4 py-3 font-medium w-24 text-center">
+                <th class="px-4 py-3 first:rounded-l-lg last:rounded-r-lg font-medium w-24 text-center">
                   <span>Consolidado</span>
                 </th>
 
                 @if (view() === 'pgp_aic') {
-                  <th class="px-4 py-3 font-medium min-w-[150px]">
+                  <th class="px-4 py-3 first:rounded-l-lg last:rounded-r-lg font-medium min-w-[150px]">
                     <span>Confirmación pgp</span>
                   </th>
-                  <th class="px-4 py-3 font-medium min-w-[200px]">
+                  <th class="px-4 py-3 first:rounded-l-lg last:rounded-r-lg font-medium min-w-[200px]">
                     <span>Justificación</span>
                   </th>
                 }
               </tr>
             </thead>
-            <tbody class="text-slate-600 align-top bg-white">
+            <tbody class="text-slate-600 align-top">
               @for (r of paginatedRegistros(); track r._idStr; let i = $index) {
-                <tr class="border-b border-slate-200 cursor-default group focus:outline-none"
+                <tr class="cursor-default group focus:outline-none shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
                     [ngClass]="{
                       'bg-red-200 transition-none': consolidadoService.registrosActualizados().has(r._idStr),
-                      'bg-white transition-colors duration-200 hover:bg-slate-50': !consolidadoService.registrosActualizados().has(r._idStr)
+                      'bg-white transition-colors duration-200 hover:bg-slate-50/80': !consolidadoService.registrosActualizados().has(r._idStr)
                     }">
                   <!-- Enumeración -->
-                  <td class="px-4 py-4 text-center">
+                  <td class="px-4 py-4 text-center first:rounded-l-lg last:rounded-r-lg">
                     <span class="text-[10px] font-bold text-slate-400 bg-slate-100 w-6 h-6 flex items-center justify-center rounded-full border border-slate-200 group-hover:bg-slate-900 group-hover:text-white transition-colors">
                       {{ i + 1 }}
                     </span>
                   </td>
                   
                   <!-- Ubicación -->
-                  <td class="px-4 py-4 text-[11px] whitespace-normal">
+                  <td class="px-4 py-4 first:rounded-l-lg last:rounded-r-lg text-[11px] whitespace-normal">
                     <div class="flex items-start justify-between gap-2 group/ubicacion">
                       <div>
-                        <div class="font-bold text-slate-800 mb-0.5" [class.bg-missing-value]="!r['area']">{{ r['area'] || 'N/A' }}</div>
+                        <div class="font-medium text-slate-800 mb-0.5" [class.bg-missing-value]="!r['area']">{{ r['area'] || 'N/A' }}</div>
                         <div class="text-[10px] text-slate-500 font-mono bg-slate-100 inline-block px-1.5 py-0.5 rounded border border-slate-200" [class.bg-missing-value]="!r['cama']">Cama: {{ r['cama'] || 'N/A' }}</div>
                       </div>
                       <button (click)="openGiroCamaModal(r)" 
@@ -157,7 +217,7 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                   </td>
 
                   <!-- Paciente -->
-                  <td class="px-4 py-4 text-[11px] whitespace-normal">
+                  <td class="px-4 py-4 first:rounded-l-lg last:rounded-r-lg text-[11px] whitespace-normal">
                     <div class="flex items-start justify-between gap-2 group/paciente">
                       <div>
                         <div class="font-bold text-slate-900 mb-1" [class.bg-missing-value]="!r['nombre']">{{ r['nombre'] || 'N/A' }}</div>
@@ -175,10 +235,13 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                           @if (r['validacion_derechos']) {
                             <div class="mt-2">
                               <button (click)="openDerechosModal(r)" 
-                                      class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white text-slate-700 border border-slate-200 text-[10px] font-medium hover:bg-slate-50 transition-colors shadow-sm"
+                                      class="flex items-center gap-1 text-[9px] text-slate-500 hover:text-slate-800 transition-colors text-left"
                                       [title]="r._derechosEstado + ' por: ' + r['validacion_derechos'] + ' (' + (r['validacion_derechos_fecha'] | date:'dd/MM/yyyy hh:mm:ss a') + ')'">
-                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                {{ r._derechosEstado }}
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
+                                {{ r._derechosEstado }}: 
+                                @if (r['valdiacion_derechos_fecha'] || r['validacion_derechos_fecha']) {
+                                  <span class="font-bold text-slate-700">{{ (r['valdiacion_derechos_fecha'] || r['validacion_derechos_fecha']) | date:'dd/MM/yyyy' }}</span>
+                                }
                               </button>
                             </div>
                           }
@@ -204,23 +267,28 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                   </td>
 
                   <!-- Admisión -->
-                  <td class="px-4 py-4 text-[11px] whitespace-normal">
-                    <div class="grid grid-cols-[45px_1fr] gap-1 text-[10px] text-slate-500 mb-0.5">
-                      <span>Ingreso:</span>
-                      <span class="font-mono">{{ r['fecha_ingreso'] || 'N/A' }}</span>
-                    </div>
-                    <div class="grid grid-cols-[45px_1fr] gap-1 text-[10px] text-slate-500 mb-1">
-                      <span>Hosp:</span>
-                      <span class="font-mono">{{ r['fecha_hosp'] || 'N/A' }}</span>
-                    </div>
-                    <div class="flex gap-2 mt-1.5">
-                      <span class="text-[9px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded" title="Días Ingreso">D.I: {{ r['dias_ingr'] || 0 }}</span>
-                      <span class="text-[9px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded" title="Días Hospitalización">D.H: {{ r['dias_hosp'] || 0 }}</span>
+                  <td class="px-4 py-4 first:rounded-l-lg last:rounded-r-lg text-[11px] whitespace-normal">
+                    <div class="flex flex-col gap-2">
+                       <div class="flex items-center justify-between gap-3">
+                         <div class="flex flex-col">
+                           <span class="text-[9px] text-slate-400 font-bold uppercase tracking-wider leading-none mb-0.5">F. Ingreso</span>
+                           <span class="font-mono text-slate-700 leading-none">{{ r._fechaIngresoFormatted }}</span>
+                         </div>
+                         <span class="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 py-0.5 rounded shadow-sm w-10 text-center shrink-0 inline-block" title="Días Ingreso">{{ r['dias_ingr'] || 0 }}d</span>
+                       </div>
+                       
+                       <div class="flex items-center justify-between gap-3">
+                         <div class="flex flex-col">
+                           <span class="text-[9px] text-slate-400 font-bold uppercase tracking-wider leading-none mb-0.5">F. HOSPITALIZACIÓN</span>
+                           <span class="font-mono text-slate-700 leading-none">{{ r._fechaHospFormatted }}</span>
+                         </div>
+                         <span class="text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200 py-0.5 rounded shadow-sm w-10 text-center shrink-0 inline-block" title="Días Hospitalización">{{ r['dias_hosp'] || 0 }}d</span>
+                       </div>
                     </div>
                   </td>
 
                   <!-- Entidad -->
-                  <td class="px-4 py-4 text-[11px] whitespace-normal max-w-[400px]">
+                  <td class="px-4 py-4 first:rounded-l-lg last:rounded-r-lg text-[11px] whitespace-normal max-w-[400px]">
                     <div class="flex items-start justify-between gap-2 group/entidad">
                       <div>
                         <div class="font-semibold text-slate-800 mb-0.5 flex items-center flex-wrap gap-1">
@@ -232,7 +300,14 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                         <div class="text-[10px] text-slate-500 mb-0.5">Contrato: {{ r['contrato'] || 'N/A' }}</div>
                         <div class="text-[9px] text-slate-400 uppercase">{{ r['municipio'] || 'N/A' }}</div>
                         @if (r['eps_soat']) {
-                          <div class="text-[10px] text-emerald-600 font-medium mt-0.5">EPS: {{ r['eps_soat'] }}</div>
+                          <div class="text-[10px] text-slate-600 font-medium mt-0.5">EPS: {{ r['eps_soat'] }}</div>
+                        }
+
+                        @if (r['fecha_egreso_entidad']) {
+                          <div class="mt-1 flex items-center gap-1 text-[9px] text-slate-500">
+                            <lucide-icon [name]="CalendarRange" class="w-3 h-3 text-emerald-500"></lucide-icon>
+                            Últ. corte: <span class="font-bold text-slate-700">{{ r['fecha_egreso_entidad'] | date:'dd/MM/yyyy' }}</span>
+                          </div>
                         }
                         
                         @if (r._isCorteAdmin) {
@@ -259,12 +334,12 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
 
                   <!-- Gestión Estancia -->
                   @if (view() === 'general' || view() === 'estancias_nuevas' || view() === 'seguimiento') {
-                    <td class="px-4 py-4 text-[11px] whitespace-normal">
+                    <td class="px-4 py-4 first:rounded-l-lg last:rounded-r-lg text-[11px] whitespace-normal">
                       <div class="flex items-start justify-between gap-2 group/gestion">
-                        <div class="flex flex-col gap-1 w-32">
+                        <div class="flex flex-col gap-1 w-[140px]">
                           <!-- Aut Tag -->
-                          <div class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded px-2 py-1">
-                            <span class="text-[10px] font-bold text-slate-600">Aut:</span>
+                          <div class="flex items-center justify-between gap-1.5 bg-slate-50 border border-slate-200 rounded px-2 py-1">
+                            <span class="text-[10px] font-bold text-slate-600 shrink-0">Autorización:</span>
                             @if (r['aut_estancia'] === 'SI') {
                               <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-bold">
                                 <lucide-icon [name]="Check" class="w-2.5 h-2.5"></lucide-icon>
@@ -280,13 +355,16 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                             } @else if (r['aut_estancia'] === 'PP') {
                               <span class="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center text-[9px] font-bold">PP</span>
                             } @else {
-                              <span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 flex items-center justify-center text-[9px] font-bold uppercase">Pend</span>
+                              <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 text-[9px] font-bold uppercase">
+                                <lucide-icon [name]="Clock" class="w-2.5 h-2.5 text-amber-500"></lucide-icon>
+                                Pend
+                              </span>
                             }
                           </div>
                           <!-- Gestión Tag -->
                           <div class="flex flex-col items-center justify-center bg-slate-50 border border-slate-200 rounded px-2 py-1.5">
                             <span class="text-[9px] font-bold text-slate-500 uppercase">Próxima Gestión</span>
-                            <span class="text-[11px] font-bold text-slate-800" [title]="r['fecha_proxima_gestion'] || r['gestion_estancia'] || 'Sin fecha'">
+                            <span class="text-[11px] text-slate-800" [title]="r['fecha_proxima_gestion'] || r['gestion_estancia'] || 'Sin fecha'">
                               {{ r['fecha_proxima_gestion'] || r['gestion_estancia'] || '---' }}
                             </span>
                           </div>
@@ -302,12 +380,16 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
 
                   <!-- Novedades -->
                   @if (view() === 'general' || view() === 'estancias_nuevas' || view() === 'seguimiento') {
-                    <td class="px-4 py-4 text-[11px] whitespace-normal min-w-[250px]">
+                    <td class="px-4 py-4 first:rounded-l-lg last:rounded-r-lg text-[11px] whitespace-normal min-w-[250px]">
                       <div class="flex items-start justify-between gap-2 group/obs">
                         <div class="flex-1 flex flex-col gap-1">
                           <!-- Proceso Notif -->
                           <div class="font-bold text-slate-800 flex items-center justify-between">
-                            <span>{{ r['proceso_notif'] || 'Sin proceso' }}</span>
+                            @if (r._hasTramiteHistory) {
+                              <span>{{ r['proceso_notif'] || 'Sin proceso' }}</span>
+                            } @else {
+                              <span class="text-[10px] text-slate-500 italic font-normal">Sin Novedades</span>
+                            }
                             <button (click)="openTramiteModal(r)" 
                                     [class]="r._hasTramiteHistory ? 'text-blue-600 hover:text-blue-800' : 'text-slate-400 hover:text-slate-800 opacity-0 group-hover/obs:opacity-100'" 
                                     class="transition-opacity p-1 rounded hover:bg-slate-200" title="Ver/Editar trámite">
@@ -339,7 +421,7 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
 
                   <!-- Soportes -->
                   @if (view() === 'general' || view() === 'estancias_nuevas' || view() === 'seguimiento') {
-                    <td class="px-4 py-4 text-[11px] whitespace-normal">
+                    <td class="px-4 py-4 first:rounded-l-lg last:rounded-r-lg text-[11px] whitespace-normal">
                       <div class="flex items-start justify-between gap-2 group/soportes">
                         <div class="flex-1">
                           @if (r._latestSoporte; as latest) {
@@ -367,7 +449,7 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                         </button>
                       </div>
                     </td>
-                    <td class="px-4 py-4 text-center">
+                    <td class="px-4 py-4 first:rounded-l-lg last:rounded-r-lg text-center">
                       <button (click)="viewingConsolidadoRecord.set(r)" class="p-1 rounded hover:bg-slate-200">
                         <lucide-icon [name]="LayoutDashboard" class="w-5 h-5 text-indigo-600"></lucide-icon>
                       </button>
@@ -375,8 +457,8 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                   }
 
                   @if (view() === 'pgp_aic') {
-                    <td class="px-4 py-4 text-[11px] text-slate-700">{{ r['confirmacion_pgp'] || '-' }}</td>
-                    <td class="px-4 py-4 text-[11px] text-slate-600 whitespace-normal">{{ r['justificacion'] || '-' }}</td>
+                    <td class="px-4 py-4 first:rounded-l-lg last:rounded-r-lg text-[11px] text-slate-700">{{ r['confirmacion_pgp'] || '-' }}</td>
+                    <td class="px-4 py-4 first:rounded-l-lg last:rounded-r-lg text-[11px] text-slate-600 whitespace-normal">{{ r['justificacion'] || '-' }}</td>
                   }
                 </tr>
               } @empty {
@@ -433,7 +515,7 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                 <div class="bg-slate-50 rounded border border-slate-200 divide-y divide-slate-200">
                   @for (obs of parsedObs(); track $index) {
                     <div class="p-2 flex justify-between items-start gap-2 hover:bg-slate-100 transition-colors">
-                      <div class="text-sm font-mono whitespace-pre-wrap flex-1" [class.line-through]="obs.isDeleted" [class.text-slate-400]="obs.isDeleted" [class.text-slate-700]="!obs.isDeleted">
+                      <div class="text-sm font-mono break-all whitespace-pre-wrap flex-1" [class.line-through]="obs.isDeleted" [class.text-slate-400]="obs.isDeleted" [class.text-slate-700]="!obs.isDeleted">
                         {{ obs.text }}
                       </div>
                       @if (!obs.isDeleted) {
@@ -748,22 +830,39 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
               </div>
             }
             <div class="space-y-1">
-              <label for="gestionInput" class="text-xs font-semibold text-slate-600 uppercase">Frecuencia de Gestión (Días)</label>
+              <label for="frecuenciaInput" class="text-xs font-semibold text-slate-600 uppercase">Frecuencia de Gestión (Días)</label>
               <div class="flex items-center gap-2">
                 <span class="text-sm text-slate-500">Cada</span>
-                <input id="gestionInput" type="number" min="0" [value]="gestionInputValue()" (input)="gestionInputValue.set($any($event.target).value)" class="w-20 p-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 focus:outline-none text-center">
+                <select id="frecuenciaInput" [value]="getFrecuenciaSelectValue()" (change)="onFrecuenciaSelectChange($any($event.target).value)" class="p-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white min-w-[80px]">
+                  <option value="1">1</option>
+                  <option value="3">3</option>
+                  <option value="5">5</option>
+                  <option value="20">20</option>
+                  <option value="0">Ninguno</option>
+                  <option value="otro">Otro (Integral)</option>
+                </select>
+                @if (getFrecuenciaSelectValue() === 'otro' && gestionDiasInput() !== -1) {
+                  <input type="number" 
+                         [value]="gestionDiasInput()" 
+                         (input)="onDiasManualChange($any($event.target).value)" 
+                         class="w-20 p-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 focus:outline-none text-center bg-white">
+                }
                 <span class="text-sm text-slate-500">días</span>
               </div>
-              <p class="text-[10px] text-slate-500 mt-1">Deje en 0 para "Integral - No se gestiona"</p>
             </div>
             <div class="space-y-1">
-              <label for="nextDateInput" class="text-xs font-semibold text-slate-600 uppercase">Fecha Próxima Gestión (Calculada)</label>
-              <input id="nextDateInput" type="date" [value]="calculateNextDate(gestionInputValue())" disabled class="w-full p-2 text-sm border border-slate-300 rounded bg-slate-100">
+              <label for="nextDateInput" class="text-xs font-semibold text-slate-600 uppercase">Fecha Próxima Gestión</label>
+              @if (gestionDiasInput() === -1) {
+                <input id="nextDateInput" type="text" disabled value="INTEGRAL" class="w-full p-2 text-sm border border-slate-300 rounded bg-slate-100 text-slate-500 outline-none font-bold">
+              } @else {
+                <input id="nextDateInput" type="date" [value]="fechaGestionInputValue()" (change)="onFechaGestionChange($any($event.target).value)" class="w-full p-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white">
+              }
+              <p class="text-[10px] text-slate-500 mt-1">Si borra la fecha, no se gestionará.</p>
             </div>
           </div>
           <div class="p-4 border-t border-slate-200 flex justify-end gap-2 bg-slate-50">
             <button (click)="closeGestionModal()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200 rounded transition-colors">Cancelar</button>
-            <button (click)="saveGestion(autInputValue(), tipoContratoInputValue(), gestionInputValue(), calculateNextDate(gestionInputValue()))" [disabled]="saving()" class="px-4 py-2 text-sm font-medium text-white bg-slate-800 hover:bg-slate-900 rounded transition-colors disabled:opacity-50 flex items-center gap-2">
+            <button (click)="saveGestion(autInputValue(), tipoContratoInputValue(), fechaGestionInputValue())" [disabled]="saving()" class="px-4 py-2 text-sm font-medium text-white bg-slate-800 hover:bg-slate-900 rounded transition-colors disabled:opacity-50 flex items-center gap-2">
               @if (saving()) {
                 <mat-icon class="animate-spin w-4 h-4 text-[16px]">refresh</mat-icon>
               }
@@ -792,7 +891,7 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
             <button (click)="derechosTab.set('historial')" [class]="derechosTab() === 'historial' ? 'flex-1 py-3 text-sm font-medium text-emerald-600 border-b-2 border-emerald-600 bg-white' : 'flex-1 py-3 text-sm font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-100'">Historial</button>
           </div>
 
-          <div class="p-4 overflow-y-auto h-[400px]">
+          <div class="p-4 overflow-y-auto h-[500px]">
             @if (derechosError()) {
               <div class="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl flex flex-col gap-3 shadow-sm">
                 <div class="flex items-start gap-2">
@@ -914,50 +1013,52 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
             </button>
           </div>
           
-          <!-- Tabs -->
-          <div class="flex border-b border-slate-200 shrink-0 bg-slate-50">
-            <button (click)="entidadTab.set('datos')" [class.border-emerald-500]="entidadTab() === 'datos'" [class.text-emerald-600]="entidadTab() === 'datos'" [class.bg-white]="entidadTab() === 'datos'" class="flex-1 py-3 text-sm font-medium border-b-2 transition-colors hover:bg-slate-100" [class.border-transparent]="entidadTab() !== 'datos'" [class.text-slate-500]="entidadTab() !== 'datos'">Datos de Entidad</button>
-            <button (click)="entidadTab.set('cortes')" [class.border-emerald-500]="entidadTab() === 'cortes'" [class.text-emerald-600]="entidadTab() === 'cortes'" [class.bg-white]="entidadTab() === 'cortes'" class="flex-1 py-3 text-sm font-medium border-b-2 transition-colors hover:bg-slate-100" [class.border-transparent]="entidadTab() !== 'cortes'" [class.text-slate-500]="entidadTab() !== 'cortes'">Cortes de Estancia</button>
-          </div>
-
-          <div class="p-4 overflow-y-auto h-[400px]">
-            @if (entidadTab() === 'datos') {
-              <div class="space-y-4">
-                <div class="space-y-1">
-                  <label for="entidadInput" class="text-xs font-semibold text-slate-600 uppercase">Entidad Principal</label>
-                  <input id="entidadInput" [value]="entidadInputValue()" (input)="entidadInputValue.set($any($event.target).value)" class="w-full p-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="Ej: Nueva EPS">
+          <!-- Remove Tabs entirely -->
+          
+          <div class="p-6 overflow-y-auto max-h-[85vh] space-y-8 bg-slate-50/30">
+            <!-- Sección 1: Datos de Entidad -->
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+              <div class="flex items-center gap-2 border-b border-slate-100 pb-3 mb-4">
+                <div class="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <lucide-icon [name]="Building2" class="w-4 h-4"></lucide-icon>
+                </div>
+                <h4 class="font-bold text-slate-700">Configuración de Entidad</h4>
+              </div>
+              
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div class="col-span-1 md:col-span-2 space-y-1">
+                  <label for="entidadInput" class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Entidad Principal</label>
+                  <input id="entidadInput" [value]="entidadInputValue()" (input)="entidadInputValue.set($any($event.target).value)" class="w-full p-2.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none transition-all" placeholder="Ej: Nueva EPS">
                 </div>
                 <div class="space-y-1">
-                  <label for="epsSoatInput" class="text-xs font-semibold text-slate-600 uppercase">EPS</label>
+                  <label for="epsSoatInput" class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">EPS / Administradora</label>
                   <div class="relative">
-                    <div class="relative z-50">
-                      <lucide-icon [name]="Search" class="absolute left-2 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400"></lucide-icon>
                       <input id="epsSoatInput" #epsSoatInput [value]="epsSearchText()" 
-                             (input)="onEpsInput($event)" (focus)="showEpsDropdown.set(true)" (click)="showEpsDropdown.set(true)"
+                             (input)="onEpsInput($event)" (keydown)="onEpsKeydown($event)" (focus)="showEpsDropdown.set(true)" (click)="showEpsDropdown.set(true)"
                              autocomplete="off"
-                             class="w-full pl-8 pr-8 py-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 focus:outline-none relative z-50 bg-white" 
+                             class="w-full p-2.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white transition-all" 
                              placeholder="Buscar EPS...">
                       @if (epsSearchText()) {
-                        <button (click)="clearEps()" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none z-50" title="Limpiar EPS">
+                        <button (click)="clearEps()" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none z-50" title="Limpiar EPS">
                           <lucide-icon [name]="X" class="w-4 h-4"></lucide-icon>
                         </button>
                       }
-                    </div>
                     @if (showEpsDropdown()) {
                       <div class="fixed inset-0 z-40" 
                            (click)="showEpsDropdown.set(false)" 
-                           (keydown.escape)="showEpsDropdown.set(false)"
-                           tabindex="0"
+                           tabindex="-1"
                            role="button"
                            aria-label="Cerrar lista de EPS"></div>
                       <div class="absolute z-50 w-full bg-white border border-slate-200 rounded-lg shadow-2xl mt-1 max-h-48 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-200" style="background-color: white;">
-                        @for (eps of filteredEps(); track eps) {
-                          <div class="px-3 py-2 text-sm hover:bg-emerald-50 cursor-pointer flex items-center justify-between group" 
+                        @for (eps of filteredEps(); track eps; let i = $index) {
+                          <div class="px-3 py-2 text-sm cursor-pointer flex items-center justify-between group" 
+                               [ngClass]="i === focusedEpsIndex() ? 'bg-emerald-50 text-emerald-700' : 'hover:bg-emerald-50 text-slate-700'"
                                (click)="selectEps(eps)" 
-                               (keydown.enter)="selectEps(eps)" 
+                               (mouseover)="focusedEpsIndex.set(i)"
+                               (focus)="focusedEpsIndex.set(i)"
                                tabindex="0"
                                role="button">
-                            <span class="text-slate-700 group-hover:text-emerald-700">{{ eps }}</span>
+                            <span>{{ eps }}</span>
                             @if (epsSearchText() === eps) {
                               <lucide-icon [name]="Check" class="text-emerald-500 w-4 h-4"></lucide-icon>
                             }
@@ -971,29 +1072,39 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                       </div>
                     }
                   </div>
-                  <p class="text-[10px] text-slate-500 mt-1">Utilice este campo para registrar la EPS del paciente cuando la entidad principal es SOAT. Puede buscar en la lista.</p>
+                  <p class="text-[10px] text-slate-400 mt-1 leading-tight">Registre la EPS del paciente cuando la entidad principal es SOAT.</p>
                 </div>
                 <div class="space-y-1">
-                  <label for="contratoInput" class="text-xs font-semibold text-slate-600 uppercase">Contrato</label>
-                  <select id="contratoInput" [value]="contratoInputValue()" (change)="contratoInputValue.set($any($event.target).value)" class="w-full p-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white">
+                  <label for="contratoInput" class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Contrato</label>
+                  <select id="contratoInput" [value]="contratoInputValue()" (change)="contratoInputValue.set($any($event.target).value)" class="w-full p-2.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white transition-all cursor-pointer">
                     <option value="">Seleccione...</option>
                     <option value="SI">SI</option>
                     <option value="NO">NO</option>
                   </select>
                 </div>
               </div>
-            } @else {
-              <div class="space-y-4">
+            </div>
+
+            <!-- Sección 2: Cortes de Estancia -->
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+              <div class="flex items-center gap-2 border-b border-slate-100 pb-3 mb-4">
+                <div class="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <lucide-icon [name]="CalendarRange" class="w-4 h-4"></lucide-icon>
+                </div>
+                <h4 class="font-bold text-slate-700">Control y Cortes de Estancia</h4>
+              </div>
+
+              <div class="space-y-5">
                 <!-- Alertas -->
                 @if (editingEntidadDiasCorte() >= 30) {
-                  <div class="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg flex items-start gap-2 text-sm">
+                  <div class="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg flex items-start gap-2 text-sm shadow-sm">
                     <lucide-icon [name]="AlertTriangle" class="text-red-500 shrink-0 w-5 h-5"></lucide-icon>
                     <div>
-                      <strong>¡Alerta de Corte!</strong> Han pasado {{ editingEntidadDiasCorte() }} días desde el último corte o ingreso. Se superó el límite de 30 días.
+                      <strong>¡Alerta de Corte!</strong> Han pasado {{ editingEntidadDiasCorte() }} días desde el último corte. Se superó el límite de 30 días.
                     </div>
                   </div>
                 } @else if (editingEntidadDiasCorte() >= 25) {
-                  <div class="bg-amber-50 border border-amber-200 text-amber-700 p-3 rounded-lg flex items-start gap-2 text-sm">
+                  <div class="bg-amber-50 border border-amber-200 text-amber-700 p-3 rounded-lg flex items-start gap-2 text-sm shadow-sm">
                     <lucide-icon [name]="Clock" class="text-amber-500 shrink-0 w-5 h-5"></lucide-icon>
                     <div>
                       <strong>Próximo a vencer:</strong> Han pasado {{ editingEntidadDiasCorte() }} días. El corte debe realizarse antes de los 30 días.
@@ -1002,31 +1113,31 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                 }
                 
                 <!-- Lista de Cortes -->
-                <div class="border border-slate-200 rounded-lg overflow-hidden">
+                <div class="border border-slate-200 rounded-lg overflow-hidden shadow-sm">
                   <table class="w-full text-sm text-left">
                     <thead class="bg-slate-50 text-xs text-slate-500 uppercase">
                       <tr>
-                        <th class="px-3 py-2">Tipo</th>
-                        <th class="px-3 py-2">Autorización</th>
-                        <th class="px-3 py-2">Fecha Corte</th>
-                        <th class="px-3 py-2 w-10"></th>
+                        <th class="px-3 py-2.5">Tipo</th>
+                        <th class="px-3 py-2.5">Autorización</th>
+                        <th class="px-3 py-2.5">Fecha Corte</th>
+                        <th class="px-3 py-2.5 w-10"></th>
                       </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-200">
                       @for (corte of cortesEstancia(); track corte.id) {
-                        <tr class="hover:bg-slate-50">
-                          <td class="px-3 py-2">{{ corte.tipo }}</td>
-                          <td class="px-3 py-2 font-medium">{{ corte.autorizacion }}</td>
-                          <td class="px-3 py-2">{{ corte.fecha_corte | date:'dd/MM/yyyy' }}</td>
-                          <td class="px-3 py-2 text-right">
-                            <button (click)="deleteCorte(corte.id)" class="text-slate-400 hover:text-red-600 transition-colors" title="Eliminar corte">
+                        <tr class="hover:bg-slate-50 transition-colors">
+                          <td class="px-3 py-2.5 text-slate-700">{{ corte.tipo }}</td>
+                          <td class="px-3 py-2.5 font-bold text-slate-800">{{ corte.autorizacion }}</td>
+                          <td class="px-3 py-2.5 text-slate-600 font-mono text-xs">{{ corte.fecha_corte | date:'dd/MM/yyyy' }}</td>
+                          <td class="px-3 py-2.5 text-right">
+                            <button (click)="deleteCorte(corte.id)" class="text-slate-400 hover:text-red-600 transition-colors p-1" title="Eliminar corte">
                               <lucide-icon [name]="Trash2" class="w-4 h-4"></lucide-icon>
                             </button>
                           </td>
                         </tr>
                       } @empty {
                         <tr>
-                          <td colspan="4" class="px-3 py-4 text-center text-slate-500 text-xs italic">No hay cortes registrados</td>
+                          <td colspan="4" class="px-3 py-6 text-center text-slate-500 text-sm italic bg-slate-50/50">No hay cortes registrados</td>
                         </tr>
                       }
                     </tbody>
@@ -1034,12 +1145,12 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                 </div>
 
                 <!-- Registrar Nuevo Corte -->
-                <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-3">
-                  <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Registrar Nuevo Corte</h4>
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div class="bg-slate-50/80 p-4 rounded-lg border border-slate-200">
+                  <h5 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">Registrar Nuevo Corte</h5>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                     <div class="space-y-1">
-                      <label for="tipoCorte" class="text-[10px] font-bold text-slate-500 uppercase">Tipo de Corte</label>
-                      <select id="tipoCorte" #tipoCorteInput (change)="tipoCorteSeleccionado.set(tipoCorteInput.value)" class="w-full p-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white">
+                      <label for="tipoCorte" class="text-[10px] font-bold text-slate-500 uppercase">Tipo</label>
+                      <select id="tipoCorte" #tipoCorteInput (change)="tipoCorteSeleccionado.set(tipoCorteInput.value)" class="w-full p-2.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white transition-all">
                         <option value="Direccionamiento">Direccionamiento</option>
                         <option value="Corte administrativo">Corte administrativo</option>
                         <option value="Cambio de EPS">Cambio de EPS</option>
@@ -1048,37 +1159,35 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                     </div>
                     @if (tipoCorteSeleccionado() === 'Otro') {
                       <div class="space-y-1">
-                        <label for="otroTipoCorte" class="text-[10px] font-bold text-slate-500 uppercase">Especifique el tipo</label>
-                        <input id="otroTipoCorte" #otroTipoInput (input)="otroTipoCorte.set(otroTipoInput.value)" class="w-full p-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="Especifique el tipo de corte">
+                        <label for="otroTipoCorte" class="text-[10px] font-bold text-slate-500 uppercase">Especifique</label>
+                        <input id="otroTipoCorte" #otroTipoInput (input)="otroTipoCorte.set(otroTipoInput.value)" class="w-full p-2.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none transition-all" placeholder="Tipo de corte">
                       </div>
                     }
                     <div class="space-y-1">
                       <label for="autCorte" class="text-[10px] font-bold text-slate-500 uppercase">Autorización</label>
-                      <input id="autCorte" #autCorteInput class="w-full p-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="N° de Autorización">
+                      <input id="autCorte" #autCorteInput class="w-full p-2.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none transition-all" placeholder="N° de Autorización">
                     </div>
-                    <div class="space-y-1 md:col-span-2">
-                      <label for="fechaCorte" class="text-[10px] font-bold text-slate-500 uppercase">Fecha Egreso en Entidad</label>
-                      <input id="fechaCorte" #fechaCorteInput type="date" class="w-full p-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                    <div class="space-y-1 md:col-span-2 lg:col-span-1">
+                      <label for="fechaCorte" class="text-[10px] font-bold text-slate-500 uppercase">Fecha Egreso (Corte)</label>
+                      <input id="fechaCorte" #fechaCorteInput type="date" class="w-full p-2.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none transition-all">
                     </div>
                   </div>
-                  <button (click)="saveCorte(tipoCorteSeleccionado() === 'Otro' ? otroTipoCorte() : tipoCorteSeleccionado(), autCorteInput.value, fechaCorteInput.value)" class="w-full py-2 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded shadow-sm transition-colors flex items-center justify-center gap-2">
+                  <button (click)="saveCorte(tipoCorteSeleccionado() === 'Otro' ? otroTipoCorte() : tipoCorteSeleccionado(), autCorteInput.value, fechaCorteInput.value)" class="w-full py-2.5 text-sm font-bold text-white bg-slate-800 hover:bg-slate-900 rounded-lg shadow-sm transition-colors flex items-center justify-center gap-2">
                     <lucide-icon [name]="Plus" class="w-4 h-4"></lucide-icon>
-                    Agregar Corte
+                    Agregar a la tabla
                   </button>
                 </div>
               </div>
-            }
+            </div>
           </div>
           <div class="p-4 border-t border-slate-200 flex justify-end gap-2 bg-slate-50 shrink-0">
-            <button (click)="closeEntidadModal()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200 rounded transition-colors">Cerrar</button>
-            @if (entidadTab() === 'datos') {
-              <button (click)="saveEntidad()" [disabled]="saving()" class="px-4 py-2 text-sm font-medium text-white bg-slate-800 hover:bg-slate-900 rounded transition-colors disabled:opacity-50 flex items-center gap-2">
-                @if (saving()) {
-                  <mat-icon class="animate-spin w-4 h-4 text-[16px]">refresh</mat-icon>
-                }
-                Guardar Datos
-              </button>
-            }
+            <button (click)="closeEntidadModal()" class="px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-200 rounded-lg transition-colors">Volver</button>
+            <button (click)="saveEntidad()" [disabled]="saving()" class="px-5 py-2.5 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow flex items-center gap-2 rounded-lg transition-colors disabled:opacity-50">
+              @if (saving()) {
+                <mat-icon class="animate-spin w-4 h-4 text-[16px]">refresh</mat-icon>
+              }
+              Guardar Datos de Entidad
+            </button>
           </div>
         </div>
       </div>
@@ -1127,11 +1236,11 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                     </div>
                     <div class="col-span-2 sm:col-span-1">
                       <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Fecha Ingreso</div>
-                      <div class="text-sm text-slate-800">{{ viewingDetalleRecord()?.['fecha_ingreso'] || '-' }}</div>
+                      <div class="text-sm text-slate-800">{{ viewingDetalleIngresoFormatted() }}</div>
                     </div>
                     <div class="col-span-2 sm:col-span-1">
                       <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Fecha Hosp.</div>
-                      <div class="text-sm text-slate-800">{{ viewingDetalleRecord()?.['fecha_hosp'] || '-' }}</div>
+                      <div class="text-sm text-slate-800">{{ viewingDetalleHospFormatted() }}</div>
                     </div>
                     <div class="col-span-2 sm:col-span-1">
                       <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Días Estancia</div>
@@ -1231,9 +1340,9 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                           {{ viewingDetalleRecord()?.['aut_estancia'] || 'NO' }}
                         </span>
                         @if (viewingDetalleRecord()?.['aut_estancia'] === 'NO' || viewingDetalleRecord()?.['aut_estancia'] === 'PGP' || viewingDetalleRecord()?.['aut_estancia'] === 'PP') {
-                          @if (viewingDetalleRecord()?.['tipo_contrato_no_aut']) {
+                          @if (viewingDetalleRecord()?.['confirmacion_pgp']) {
                             <span class="ml-2 px-2 py-0.5 rounded text-xs font-bold border bg-slate-100 text-slate-700 border-slate-300">
-                              {{ viewingDetalleRecord()?.['tipo_contrato_no_aut'] }}
+                              {{ viewingDetalleRecord()?.['confirmacion_pgp'] }}
                             </span>
                           }
                         }
@@ -1556,6 +1665,8 @@ export class ConsolidadoListComponent {
   readonly ChevronDown = ChevronDown;
   readonly Filter = Filter;
   readonly ArrowUpDown = ArrowUpDown;
+  readonly ArrowUp = ArrowUp;
+  readonly ArrowDown = ArrowDown;
   readonly Plus = Plus;
   readonly Eye = Eye;
   readonly History = History;
@@ -1581,15 +1692,58 @@ export class ConsolidadoListComponent {
   // EPS Searchable Dropdown
   epsSearchText = signal('');
   showEpsDropdown = signal(false);
+  focusedEpsIndex = signal(-1);
   filteredEps = computed(() => {
     const search = this.epsSearchText().toLowerCase();
     return this.entidadesUnicas().filter(eps => eps.toLowerCase().includes(search));
   });
 
+  epsMappings = computed(() => {
+    const records = this.consolidadoService.allRegistros();
+    const map = new Map<string, { entidad: string, contrato: string }>();
+    records.forEach(r => {
+      const eps = (r['eps_soat'] as string || '').trim();
+      const entidad = (r['entidad'] as string || '').trim();
+      const contrato = (r['contrato'] as string || '').trim();
+      
+      if (eps) {
+        // Guarda la asociación tomando la EPS principal
+        map.set(eps, { entidad: entidad, contrato: contrato });
+      } else if (entidad && !map.has(entidad)) {
+        // Fallback: si es una EPS directa sin SOAT
+        map.set(entidad, { entidad: entidad, contrato: contrato });
+      }
+    });
+    return map;
+  });
+
   onEpsInput(event: Event) {
     const input = event.target as HTMLInputElement;
-    this.epsSearchText.set(input.value);
+    this.epsSearchText.set(input.value.trimStart());
     this.showEpsDropdown.set(true);
+    this.focusedEpsIndex.set(-1);
+  }
+
+  onEpsKeydown(event: KeyboardEvent) {
+    const epsList = this.filteredEps();
+    if (['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(event.key)) {
+      event.preventDefault();
+      if (this.showEpsDropdown()) {
+        if (event.key === 'ArrowDown') {
+          this.focusedEpsIndex.update(i => Math.min(i + 1, epsList.length - 1));
+        } else if (event.key === 'ArrowUp') {
+          this.focusedEpsIndex.update(i => Math.max(i - 1, 0));
+        } else if (event.key === 'Enter') {
+          if (this.focusedEpsIndex() >= 0 && this.focusedEpsIndex() < epsList.length) {
+            this.selectEps(epsList[this.focusedEpsIndex()]);
+          }
+        } else if (event.key === 'Escape') {
+          this.showEpsDropdown.set(false);
+        }
+      } else if (event.key === 'ArrowDown') {
+        this.showEpsDropdown.set(true);
+      }
+    }
   }
 
   selectEps(eps: string) {
@@ -1597,6 +1751,15 @@ export class ConsolidadoListComponent {
     this.showEpsDropdown.set(false);
     if (this.epsSoatInput) {
       this.epsSoatInput.nativeElement.value = eps;
+    }
+    
+    // Auto-fill entidad y contrato basado en datos históricos
+    const mapping = this.epsMappings().get(eps);
+    if (mapping) {
+      // this.entidadInputValue.set(mapping.entidad);
+      if (mapping.contrato) {
+        this.contratoInputValue.set(mapping.contrato);
+      }
     }
   }
 
@@ -1617,7 +1780,50 @@ export class ConsolidadoListComponent {
   registros = input.required<ConsolidadoRecord[]>();
   view = input<'general' | 'pgp_aic' | 'estancias_nuevas' | 'seguimiento' | 'validacion_derechos'>('general');
 
-  sortedRegistros = signal<MappedConsolidadoRecord[]>([]);
+  sortedRegistros = computed<MappedConsolidadoRecord[]>(() => {
+    const all = this.registros();
+    
+    const sorted = [...all].sort((a, b) => {
+      const entA = String(a['entidad'] || '').toLowerCase();
+      const entB = String(b['entidad'] || '').toLowerCase();
+      return entA.localeCompare(entB);
+    });
+
+    return sorted.map(r => {
+      const hasCortes = this.getCortesEstancia(r).length > 0;
+      const diasCorte = this.calcularDiasCorte(r);
+      const derechosEstado = this.getDerechosEstado(r);
+      const visibleObs = this.getVisibleObservaciones(r['observaciones']);
+      const latestTramite = this.getLatestTramiteNota(r['nombre_notif']);
+      const latestTramiteDate = this.getLatestTramiteDate(r['nombre_notif']);
+      const isSinConvenio = this.epsSinConvenioService.isSinConvenio(this.getStringValue(r['entidad']));
+      const isCorteAdmin = this.epsCorteAdministrativoService.isCorteAdministrativo(this.getStringValue(r['entidad']));
+      const hasTramiteHistory = this.hasTramiteHistory(r);
+      const latestSoporte = this.getLatestSoporte(r);
+
+      const idStr = r.id ? String(r.id) : '';
+      
+      return {
+        ...r,
+        _hasCortes: hasCortes,
+        _diasCorte: diasCorte,
+        _derechosEstado: derechosEstado,
+        _visibleObs: visibleObs,
+        _latestTramite: latestTramite,
+        _latestTramiteDate: latestTramiteDate,
+        _isSinConvenio: isSinConvenio,
+        _isCorteAdmin: isCorteAdmin,
+        _hasTramiteHistory: hasTramiteHistory,
+        _latestSoporte: latestSoporte,
+        _diasHospNum: Number(r['dias_hosp']) || 0,
+        _hcStr: r['hc'] ? String(r['hc']) : '',
+        _ingresoStr: r['ingreso'] ? String(r['ingreso']) : '',
+        _idStr: idStr,
+        _fechaIngresoFormatted: this.formatStringDate(r['fecha_ingreso']),
+        _fechaHospFormatted: this.formatStringDate(r['fecha_hosp'])
+      } as MappedConsolidadoRecord;
+    });
+  });
 
   Math = Math;
 
@@ -1628,49 +1834,13 @@ export class ConsolidadoListComponent {
       this.filteredRegistros();
       this.currentPage.set(1);
     }, { allowSignalWrites: true });
-    
+
     effect(() => {
-      const all = this.registros();
-      
-      const sorted = [...all].sort((a, b) => {
-        const entA = String(a['entidad'] || '').toLowerCase();
-        const entB = String(b['entidad'] || '').toLowerCase();
-        return entA.localeCompare(entB);
-      });
-
-      const mapped = sorted.map(r => {
-        const hasCortes = this.getCortesEstancia(r).length > 0;
-        const diasCorte = this.calcularDiasCorte(r);
-        const derechosEstado = this.getDerechosEstado(r);
-        const visibleObs = this.getVisibleObservaciones(r['observaciones']);
-        const latestTramite = this.getLatestTramiteNota(r['nombre_notif']);
-        const latestTramiteDate = this.getLatestTramiteDate(r['nombre_notif']);
-        const isSinConvenio = this.epsSinConvenioService.isSinConvenio(this.getStringValue(r['entidad']));
-        const isCorteAdmin = this.epsCorteAdministrativoService.isCorteAdministrativo(this.getStringValue(r['entidad']));
-        const hasTramiteHistory = this.hasTramiteHistory(r);
-        const latestSoporte = this.getLatestSoporte(r);
-
-        const idStr = r.id ? String(r.id) : '';
-        return {
-          ...r,
-          _hasCortes: hasCortes,
-          _diasCorte: diasCorte,
-          _derechosEstado: derechosEstado,
-          _visibleObs: visibleObs,
-          _latestTramite: latestTramite,
-          _latestTramiteDate: latestTramiteDate,
-          _isSinConvenio: isSinConvenio,
-          _isCorteAdmin: isCorteAdmin,
-          _hasTramiteHistory: hasTramiteHistory,
-          _latestSoporte: latestSoporte,
-          _diasHospNum: Number(r['dias_hosp']) || 0,
-          _hcStr: r['hc'] ? String(r['hc']) : '',
-          _ingresoStr: r['ingreso'] ? String(r['ingreso']) : '',
-          _idStr: idStr
-        } as MappedConsolidadoRecord;
-      });
-      this.sortedRegistros.set(mapped);
-    });
+      // Whenever parent registers change due to parent filters, reset column filters
+      this.registros();
+      this.columnFilters.set({});
+      this.activeColumnFilterInputs.set({});
+    }, { allowSignalWrites: true });
   }
 
   // New structured soportes signals
@@ -1699,7 +1869,9 @@ export class ConsolidadoListComponent {
   contratoInputValue = signal<string>('');
   tipoContratoInputValue = signal<string>('');
   autInputValue = signal<string>('NO');
-  gestionInputValue = signal<string>('');
+  fechaGestionInputValue = signal<string>('');
+  gestionBaseDate = signal<string>('');
+  gestionDiasInput = signal<number | null>(null);
   viewingDetalleRecord = signal<ConsolidadoRecord | null>(null);
   viewingConsolidadoRecord = signal<MappedConsolidadoRecord | null>(null);
   viewingDetalleDiasCorte = computed(() => {
@@ -1709,6 +1881,14 @@ export class ConsolidadoListComponent {
   viewingDetalleCortesEstancia = computed(() => {
     const record = this.viewingDetalleRecord();
     return record ? this.getCortesEstancia(record) : [];
+  });
+  viewingDetalleIngresoFormatted = computed(() => {
+    const record = this.viewingDetalleRecord();
+    return this.formatStringDate(record ? record['fecha_ingreso'] : null);
+  });
+  viewingDetalleHospFormatted = computed(() => {
+    const record = this.viewingDetalleRecord();
+    return this.formatStringDate(record ? record['fecha_hosp'] : null) || '-';
   });
   viewingDetalleDerechosEstado = computed(() => {
     const record = this.viewingDetalleRecord();
@@ -2194,11 +2374,70 @@ export class ConsolidadoListComponent {
     return !!this.consolidadoService.searchQuery() || this.registros().length !== this.consolidadoService.allRegistros().length;
   });
 
+  // Sorting Logic
+  sortField = signal<'area' | 'entidad' | null>(null);
+  sortDirection = signal<'asc' | 'desc'>('asc');
+
+  toggleSort(field: 'area' | 'entidad') {
+    if (this.sortField() === field) {
+      if (this.sortDirection() === 'asc') {
+        this.sortDirection.set('desc');
+      } else {
+        this.sortField.set(null);
+        this.sortDirection.set('asc');
+      }
+    } else {
+      this.sortField.set(field);
+      this.sortDirection.set('asc');
+    }
+  }
+
+  getSortIcon(field: 'area' | 'entidad') {
+    if (this.sortField() !== field) return ArrowUpDown;
+    return this.sortDirection() === 'asc' ? ArrowUp : ArrowDown;
+  }
+
+  // Column Filters Logic
+  columnFilters = signal<{ [col: string]: string }>({});
+  activeColumnFilterInputs = signal<{ [col: string]: boolean }>({});
+
+  toggleColumnFilterInput(col: string, event: Event) {
+    event.stopPropagation();
+    const current = this.activeColumnFilterInputs();
+    this.activeColumnFilterInputs.set({ ...current, [col]: !current[col] });
+  }
+
+  setColumnFilter(col: string, value: string) {
+    const current = this.columnFilters();
+    this.columnFilters.set({ ...current, [col]: value });
+  }
+
   filteredRegistros = computed<MappedConsolidadoRecord[]>(() => {
     const all = this.sortedRegistros();
     const globalQuery = this.consolidadoService.searchQuery().toLowerCase();
+    const colFilters = this.columnFilters();
     
-    return all.filter(r => {
+    let filtered = all.filter(r => {
+      // Column filters
+      if (colFilters['area'] && !String(r['area'] || '').toLowerCase().includes(colFilters['area'].toLowerCase()) && !String(r['cama'] || '').toLowerCase().includes(colFilters['area'].toLowerCase())) {
+        return false;
+      }
+      if (colFilters['paciente'] && !String(r['nombre'] || '').toLowerCase().includes(colFilters['paciente'].toLowerCase()) && !String(r['hc'] || '').toLowerCase().includes(colFilters['paciente'].toLowerCase())) {
+        return false;
+      }
+      if (colFilters['admision'] && !String(r._fechaIngresoFormatted || '').toLowerCase().includes(colFilters['admision'].toLowerCase()) && !String(r._fechaHospFormatted || '').toLowerCase().includes(colFilters['admision'].toLowerCase())) {
+        return false;
+      }
+      if (colFilters['entidad'] && !String(r['entidad'] || '').toLowerCase().includes(colFilters['entidad'].toLowerCase()) && !String(r['eps_soat'] || '').toLowerCase().includes(colFilters['entidad'].toLowerCase())) {
+        return false;
+      }
+      if (colFilters['gestion'] && !String(r['gestion_estancia'] || '').toLowerCase().includes(colFilters['gestion'].toLowerCase()) && !String(r['aut_estancia'] || '').toLowerCase().includes(colFilters['gestion'].toLowerCase())) {
+        return false;
+      }
+      if (colFilters['novedades'] && !String(r['novedad'] || '').toLowerCase().includes(colFilters['novedades'].toLowerCase())) {
+        return false;
+      }
+
       // Global search
       if (globalQuery) {
         return String(r['area'] || '').toLowerCase().includes(globalQuery) ||
@@ -2217,6 +2456,19 @@ export class ConsolidadoListComponent {
 
       return true;
     });
+
+    // Apply sorting
+    const field = this.sortField();
+    if (field) {
+      const direction = this.sortDirection() === 'asc' ? 1 : -1;
+      filtered = [...filtered].sort((a, b) => {
+        const valA = String(a[field] || '').toLowerCase();
+        const valB = String(b[field] || '').toLowerCase();
+        return valA.localeCompare(valB) * direction;
+      });
+    }
+
+    return filtered;
   });
 
   // Pagination Logic
@@ -2356,6 +2608,16 @@ export class ConsolidadoListComponent {
       this.saving.set(false);
     }
   }
+  
+  formatStringDate(dStr: unknown): string {
+    if (!dStr || dStr === 'N/A' || typeof dStr !== 'string') return 'N/A';
+    const datePart = dStr.split(' ')[0];
+    const parts = datePart.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return dStr;
+  }
 
   getLatestTramiteNota(val: unknown): string {
     if (!val) return '';
@@ -2373,7 +2635,8 @@ export class ConsolidadoListComponent {
     } catch {
       // Fallback to string
     }
-    return String(val);
+    const cleanStr = String(val).trim();
+    return cleanStr === '' ? '' : cleanStr;
   }
 
   getLatestTramiteDate(val: unknown): string {
@@ -2457,21 +2720,8 @@ export class ConsolidadoListComponent {
   }
 
   hasTramiteHistory(record: ConsolidadoRecord): boolean {
-    try {
-      const hist = record['nombre_notif'];
-      if (typeof hist === 'string' && hist.trim().startsWith('[')) {
-        return JSON.parse(hist).length > 0;
-      }
-      if (Array.isArray(hist)) {
-        return hist.length > 0;
-      }
-      if (typeof hist === 'string' && hist.trim().length > 0) {
-        return true;
-      }
-    } catch {
-      return false;
-    }
-    return false;
+    const latest = this.getLatestTramiteNota(record['nombre_notif']);
+    return latest.length > 0;
   }
 
   tramiteTab = signal<'activos' | 'historico'>('activos');
@@ -2726,42 +2976,119 @@ export class ConsolidadoListComponent {
 
   openGestionModal(record: ConsolidadoRecord) {
     this.editingGestionRecord.set(record);
-    this.tipoContratoInputValue.set(record['tipo_contrato_no_aut'] as string || '');
+    this.tipoContratoInputValue.set(record['confirmacion_pgp'] as string || '');
     this.autInputValue.set(record['aut_estancia'] as string || 'NO');
-    this.gestionInputValue.set(this.extractDays(record['gestion_estancia']));
+    
+    // Set base date
+    const dbDate = record['fecha_proxima_gestion'] as string || '';
+    const todayStr = this.getBogotaDateOnly();
+    this.gestionBaseDate.set(dbDate || todayStr);
+    
+    this.fechaGestionInputValue.set(dbDate);
+
+    const dbDaysStr = this.extractDays(record['gestion_estancia']);
+    if (dbDaysStr) {
+        this.gestionDiasInput.set(parseInt(dbDaysStr, 10));
+    } else {
+        this.gestionDiasInput.set(dbDate ? null : 0);
+    }
   }
 
   closeGestionModal() {
     this.editingGestionRecord.set(null);
   }
 
-  calculateNextDate(daysStr: string): string {
-    const days = parseInt(daysStr, 10);
-    if (isNaN(days) || days <= 0) return '';
-    const date = new Date();
+  addDays(dateStr: string, days: number): string {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    const date = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
     date.setDate(date.getDate() + days);
-    return date.toISOString().split('T')[0];
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
   }
 
-  async saveGestion(aut_estancia: string, tipo_contrato: string, gestion_estancia_days: string, fecha_proxima_gestion: string) {
+  diffDays(baseStr: string, targetStr: string): number {
+    if (!baseStr || !targetStr) return 0;
+    const bp = baseStr.split('-');
+    const tp = targetStr.split('-');
+    const baseDate = new Date(parseInt(bp[0], 10), parseInt(bp[1], 10) - 1, parseInt(bp[2], 10));
+    const targetDate = new Date(parseInt(tp[0], 10), parseInt(tp[1], 10) - 1, parseInt(tp[2], 10));
+    const diffTime = targetDate.getTime() - baseDate.getTime();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  }
+
+  onFrecuenciaSelectChange(value: string) {
+    if (value === '0') {
+      this.gestionDiasInput.set(null);
+      this.fechaGestionInputValue.set('');
+    } else if (value === 'otro') {
+      // Si escoge OTRO, lo forzamos a manejar INTEGRAL o estado vacío de días para lógica especial
+      this.gestionDiasInput.set(-1); // Indicador especial para INTEGRAL
+      this.fechaGestionInputValue.set('');
+    } else {
+      const days = parseInt(value, 10);
+      this.gestionDiasInput.set(days);
+      this.fechaGestionInputValue.set(this.addDays(this.gestionBaseDate(), days));
+    }
+  }
+
+  onDiasManualChange(daysStr: string) {
+    const days = parseInt(daysStr, 10);
+    if (!isNaN(days) && days > 0) {
+      this.gestionDiasInput.set(days);
+      this.fechaGestionInputValue.set(this.addDays(this.gestionBaseDate(), days));
+    } else {
+      this.gestionDiasInput.set(null);
+      this.fechaGestionInputValue.set('');
+    }
+  }
+
+  onFechaGestionChange(fecha: string) {
+    this.fechaGestionInputValue.set(fecha);
+    if (fecha) {
+      const diff = this.diffDays(this.gestionBaseDate(), fecha);
+      this.gestionDiasInput.set(diff > 0 ? diff : 0);
+    } else {
+      this.gestionDiasInput.set(null);
+    }
+  }
+
+  getFrecuenciaSelectValue(): string {
+    const days = this.gestionDiasInput();
+    if (days === null || days <= 0 && days !== -1) return '0';
+    if (days === -1) return 'otro';
+    if ([1, 3, 5, 20].includes(days as number)) return days!.toString();
+    // Default to 'otro' if a manual custom value is entered, but here we specifically wanted -1 as INTEGRAL
+    return 'otro';
+  }
+
+  async saveGestion(aut_estancia: string, tipo_contrato: string, fecha_proxima_gestion: string) {
     const record = this.editingGestionRecord();
     if (!record || !record.id) return;
 
     this.saving.set(true);
     try {
-      let gestionStr = '';
-      const days = parseInt(gestion_estancia_days, 10);
-      if (isNaN(days) || days === 0) {
-        gestionStr = 'Integral - No se gestiona';
+      let gestionStr = 'Integral - No se gestiona';
+      const days = this.gestionDiasInput();
+      
+      let nextDateResult = fecha_proxima_gestion || null;
+
+      if (days === -1) {
+         gestionStr = 'INTEGRAL';
+         nextDateResult = null; // No intentar guardar la palabra 'INTEGRAL' en una columna tipo date de Supabase
+      } else if (fecha_proxima_gestion && days !== null && days > 0) {
+         gestionStr = `Cada ${days} días`;
       } else {
-        gestionStr = `Cada ${days} días`;
+         nextDateResult = ''; // Don't save if there's no valid frequency
       }
 
       await this.consolidadoService.updateRegistro(record.id, { 
         aut_estancia: aut_estancia,
-        tipo_contrato_no_aut: (aut_estancia === 'NO' || aut_estancia === 'PGP' || aut_estancia === 'PP') ? tipo_contrato : null,
+        confirmacion_pgp: (aut_estancia === 'NO' || aut_estancia === 'PGP' || aut_estancia === 'PP') ? tipo_contrato : null,
         gestion_estancia: gestionStr,
-        fecha_proxima_gestion: fecha_proxima_gestion || null
+        fecha_proxima_gestion: nextDateResult || null
       });
       this.closeGestionModal();
     } catch (error) {
@@ -2774,12 +3101,12 @@ export class ConsolidadoListComponent {
 
   openEntidadModal(record: ConsolidadoRecord) {
     this.editingEntidadRecord.set(record);
-    this.epsSearchText.set(record['eps_soat'] as string || '');
+    this.epsSearchText.set((record['eps_soat'] as string || '').trim());
     this.entidadInputValue.set(record['entidad'] as string || '');
     this.contratoInputValue.set(record['contrato'] as string || '');
     this.entidadTab.set('datos');
     if (record.id) {
-      this.consolidadoService.getCortesEstancia(Number(record.id)).then(cortes => this.cortesEstancia.set(cortes));
+      this.cortesEstancia.set(this.getCortesEstancia(record));
     }
   }
 
@@ -2807,6 +3134,21 @@ export class ConsolidadoListComponent {
       const corte = await this.consolidadoService.addCorteEstancia(nuevoCorte);
       if (corte) {
         this.cortesEstancia.update(cortes => [corte, ...cortes]);
+
+        // Sincronizar el caché nativo de la tabla para que la vista Consolidado general lo lea inmediatamente
+        const remaining = this.cortesEstancia();
+        const latestInfo = remaining[0];
+        const updates = {
+           cortes_estancia: JSON.stringify(remaining),
+           aut_estancia_entidad: latestInfo ? latestInfo.autorizacion : record['aut_estancia_entidad'],
+           fecha_egreso_entidad: latestInfo ? latestInfo.fecha_corte : record['fecha_egreso_entidad']
+        };
+        await this.consolidadoService.updateRegistro(record.id, updates);
+        
+        this.editingEntidadRecord.set({
+           ...record,
+           ...updates
+        });
       }
     } catch (error) {
       console.error('Error al guardar corte:', error);
@@ -2817,10 +3159,35 @@ export class ConsolidadoListComponent {
   async deleteCorte(id: string) {
     // confirm() no funciona en iframe, se elimina directamente en desarrollo
     try {
-      const success = await this.consolidadoService.deleteCorteEstancia(id);
-      if (success) {
-        this.cortesEstancia.update(cortes => cortes.filter(c => c.id !== id));
+      const record = this.editingEntidadRecord();
+      if (!record || !record.id) return;
+
+      if (id !== 'legacy') {
+        const success = await this.consolidadoService.deleteCorteEstancia(id);
+        if (!success) {
+           alert('Error al eliminar el corte.');
+           return;
+        }
       }
+
+      this.cortesEstancia.update(cortes => cortes.filter(c => c.id !== id));
+
+      // Sincronizar nuevamente al eliminar
+      const remaining = this.cortesEstancia();
+      const latestInfo = remaining.length > 0 ? remaining[0] : null;
+      
+      const updates = {
+         cortes_estancia: remaining.length > 0 ? JSON.stringify(remaining) : (null as any),
+         aut_estancia_entidad: latestInfo ? latestInfo.autorizacion : (null as any),
+         fecha_egreso_entidad: latestInfo ? latestInfo.fecha_corte : (null as any)
+      };
+      
+      await this.consolidadoService.updateRegistro(record.id, updates);
+      
+      this.editingEntidadRecord.set({
+         ...record,
+         ...updates
+      });
     } catch (error) {
       console.error('Error al eliminar corte:', error);
       alert('Error al eliminar el corte.');

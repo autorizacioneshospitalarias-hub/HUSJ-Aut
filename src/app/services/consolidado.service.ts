@@ -15,7 +15,6 @@ export interface ConsolidadoRecord {
   contrato?: string;
   gestion_estancia?: string;
   aut_estancia?: string;
-  tipo_contrato_no_aut?: string | null;
   fecha_proxima_gestion?: string | null;
   observaciones?: string;
   proceso_notif?: string;
@@ -270,6 +269,19 @@ export class ConsolidadoService {
       console.error('Error inserting historial:', error);
       return false;
     }
+  }
+
+  suscribirGiroCama(callback: () => void) {
+    return this.client
+      .channel('giro-cama-changes')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'historial_cambios', filter: "campo=eq.cama" },
+        () => {
+          callback();
+        }
+      )
+      .subscribe();
   }
 
   async getGiroCama() {

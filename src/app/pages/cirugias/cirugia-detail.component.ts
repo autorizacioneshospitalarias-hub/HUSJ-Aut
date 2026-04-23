@@ -6,11 +6,12 @@ import { ConsolidadoService } from '../../services/consolidado.service';
 import { DatePipe, NgClass } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
+import { LucideAngularModule, Check, X, Clock } from 'lucide-angular';
 
 @Component({
   selector: 'app-cirugia-detail',
   standalone: true,
-  imports: [DatePipe, NgClass, MatIconModule, RouterLink],
+  imports: [DatePipe, NgClass, MatIconModule, RouterLink, LucideAngularModule],
   template: `
     <div class="h-full overflow-y-auto bg-[#F3F4F6] p-6 animate-in fade-in duration-200">
       <div class="max-w-5xl mx-auto space-y-4">
@@ -127,8 +128,25 @@ import { RouterLink } from '@angular/router';
               <div class="space-y-2.5">
                 <div class="flex items-start justify-between gap-2 group/auth">
                   <div>
-                    <p class="text-[9px] font-bold text-slate-400 uppercase">Autorización</p>
-                    <p class="font-mono text-xs font-bold" [ngClass]="getAuthStatusTextClass(cirugia().authorization)">{{ cirugia().authorization || 'N/A' }}</p>
+                    <p class="text-[9px] font-bold text-slate-400 uppercase mb-1">Autorización</p>
+                    @if (normalizeAuth(cirugia().authorization) === 'SI') {
+                      <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-bold">
+                        <lucide-icon [name]="Check" class="w-2.5 h-2.5"></lucide-icon>
+                        SI
+                      </span>
+                    } @else if (normalizeAuth(cirugia().authorization) === 'NO') {
+                      <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 text-[9px] font-bold">
+                        <lucide-icon [name]="X" class="w-2.5 h-2.5"></lucide-icon>
+                        NO
+                      </span>
+                    } @else if (normalizeAuth(cirugia().authorization) === 'PTE') {
+                      <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[9px] font-bold">
+                        <lucide-icon [name]="Clock" class="w-2.5 h-2.5"></lucide-icon>
+                        PTE
+                      </span>
+                    } @else {
+                      <p class="font-mono text-xs font-bold text-slate-400 italic">Sin autorizar</p>
+                    }
                   </div>
                   <button (click)="openAuthModal(cirugia())" class="text-slate-400 hover:text-emerald-600 opacity-0 group-hover/auth:opacity-100 transition-opacity p-1 rounded hover:bg-emerald-50 shrink-0" title="Registrar autorización">
                     <mat-icon class="text-[16px] w-4 h-4">check_circle</mat-icon>
@@ -203,6 +221,10 @@ import { RouterLink } from '@angular/router';
   `
 })
 export class CirugiaDetailComponent {
+  readonly Check = Check;
+  readonly X = X;
+  readonly Clock = Clock;
+
   cirugia = input.required<Cirugia>();
   cirugiaService = inject(CirugiaService);
   ingresoService = inject(PacienteIngresoService);
@@ -269,6 +291,10 @@ export class CirugiaDetailComponent {
         this.copiedCups.set(false);
       }, 2000);
     });
+  }
+
+  normalizeAuth(auth: string | null | undefined): string {
+    return auth ? auth.toUpperCase() : '';
   }
 
   getAuthStatusTextClass(status: string | null | undefined): string {

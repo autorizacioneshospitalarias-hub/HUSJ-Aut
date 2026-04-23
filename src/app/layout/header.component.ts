@@ -1,5 +1,6 @@
 import { Component, inject, signal, computed } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
+import { LucideAngularModule, Search, X } from 'lucide-angular';
 import { PacienteIngresoService } from '../services/paciente-ingreso.service';
 import { ConsolidadoService } from '../services/consolidado.service';
 import { SupabaseService } from '../services/supabase.service';
@@ -21,22 +22,22 @@ import { NgClass } from '@angular/common';
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [MatIconModule, NgClass],
+  imports: [MatIconModule, LucideAngularModule, NgClass],
   template: `
-    <header class="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-10">
+    <header class="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-10 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
       <div class="flex items-center gap-4">
         <div class="relative group">
-          <mat-icon class="material-icons-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</mat-icon>
+          <lucide-icon [name]="SearchIcon" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></lucide-icon>
           <input type="text" 
                  [value]="getSearchQuery()"
                  (input)="setSearchQuery($any($event.target).value)"
-                 placeholder="Buscar paciente, documento..." 
-                 class="pl-10 pr-10 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm w-80 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all">
+                 placeholder="Search" 
+                 class="pl-9 pr-9 py-1.5 bg-white border border-slate-200 hover:border-slate-300 rounded-lg text-[13px] w-64 md:w-80 focus:outline-none focus:ring-0 focus:border-slate-400 transition-all text-slate-700 placeholder:text-slate-400">
           
           @if (getSearchQuery()) {
             <button (click)="setSearchQuery('')" 
-                    class="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition-colors">
-              <mat-icon class="material-icons-outlined text-[16px] w-4 h-4">close</mat-icon>
+                    class="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+              <lucide-icon [name]="XIcon" class="w-3.5 h-3.5"></lucide-icon>
             </button>
           }
         </div>
@@ -507,6 +508,9 @@ import { NgClass } from '@angular/common';
   `
 })
 export class HeaderComponent {
+  readonly SearchIcon = Search;
+  readonly XIcon = X;
+
   turnoService = inject(TurnoService);
   cirugiaService = inject(CirugiaService);
   notaService = inject(NotaOperatoriaService);

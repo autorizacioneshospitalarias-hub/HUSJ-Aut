@@ -10,15 +10,15 @@ import { FormsModule } from '@angular/forms';
   standalone: true,
   imports: [MatIconModule, NgClass, DatePipe, FormsModule],
   template: `
-    <div class="h-full p-2 animate-in fade-in duration-300 bg-slate-50 focus:outline-none" (click)="closeAllFilters()" role="button" tabindex="0" (keydown.enter)="closeAllFilters()">
-      <div class="rounded-xl shadow-sm border border-slate-200 overflow-hidden h-full flex flex-col" [ngClass]="hasActiveFilters() ? 'bg-slate-100/50' : 'bg-white'">
+    <div class="h-full animate-in fade-in duration-300 bg-white focus:outline-none" (click)="closeAllFilters()" role="button" tabindex="0" (keydown.enter)="closeAllFilters()">
+      <div class="h-full flex flex-col relative" [ngClass]="hasActiveFilters() ? 'bg-slate-50' : 'bg-white'">
         <div class="overflow-auto flex-1 scrollbar-hide">
           <table class="w-full text-sm text-left whitespace-nowrap">
-            <thead class="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
+            <thead class="bg-slate-50 border-b border-slate-200 text-xs text-slate-500 sticky top-0 z-10">
               <tr>
-                <th class="px-4 py-3 font-semibold w-10">#</th>
-                <th class="px-4 py-3 font-semibold">Fecha Salida</th>
-                <th class="px-4 py-3 font-semibold cursor-pointer hover:bg-slate-100 transition-colors" (click)="sortData('nombre')">
+                <th class="px-4 py-3 font-medium w-10">#</th>
+                <th class="px-4 py-3 font-medium">Fecha Salida</th>
+                <th class="px-4 py-3 font-medium cursor-pointer hover:bg-slate-100 transition-colors" (click)="sortData('nombre')">
                   <div class="flex items-center gap-1">
                     Paciente
                     <mat-icon class="text-[14px] w-3.5 h-3.5" [class.text-slate-400]="sortColumn() !== 'nombre'" [class.text-black]="sortColumn() === 'nombre'">
@@ -26,9 +26,9 @@ import { FormsModule } from '@angular/forms';
                     </mat-icon>
                   </div>
                 </th>
-                <th class="px-4 py-3 font-semibold">Ingreso</th>
-                <th class="px-4 py-3 font-semibold">Servicio / Cama</th>
-                <th class="px-4 py-3 font-semibold cursor-pointer hover:bg-slate-100 transition-colors" (click)="sortData('columna_w')">
+                <th class="px-4 py-3 font-medium">Ingreso</th>
+                <th class="px-4 py-3 font-medium">Servicio / Cama</th>
+                <th class="px-4 py-3 font-medium cursor-pointer hover:bg-slate-100 transition-colors" (click)="sortData('columna_w')">
                   <div class="flex items-center gap-1">
                     Columna W
                     <mat-icon class="text-[14px] w-3.5 h-3.5" [class.text-slate-400]="sortColumn() !== 'columna_w'" [class.text-black]="sortColumn() === 'columna_w'">
@@ -36,7 +36,7 @@ import { FormsModule } from '@angular/forms';
                     </mat-icon>
                   </div>
                 </th>
-                <th class="px-4 py-3 font-semibold cursor-pointer hover:bg-slate-100 transition-colors" (click)="sortData('entidad')">
+                <th class="px-4 py-3 font-medium cursor-pointer hover:bg-slate-100 transition-colors" (click)="sortData('entidad')">
                   <div class="flex items-center gap-1">
                     Entidad
                     <mat-icon class="text-[14px] w-3.5 h-3.5" [class.text-slate-400]="sortColumn() !== 'entidad'" [class.text-black]="sortColumn() === 'entidad'">
@@ -44,21 +44,21 @@ import { FormsModule } from '@angular/forms';
                     </mat-icon>
                   </div>
                 </th>
-                <th class="px-4 py-3 font-semibold">Municipio</th>
-                <th class="px-4 py-3 font-semibold text-center">Días</th>
-                <th class="px-4 py-3 font-semibold">HC15</th>
-                <th class="px-4 py-3 font-semibold">HC19</th>
-                <th class="px-4 py-3 font-semibold">Estado</th>
-                <th class="px-4 py-3 font-semibold">Autorizador</th>
-                <th class="px-4 py-3 font-semibold">Observación</th>
-                <th class="px-4 py-3 font-semibold text-center">Tiempo</th>
+                <th class="px-4 py-3 font-medium">Municipio</th>
+                <th class="px-4 py-3 font-medium text-center">Días</th>
+                <th class="px-4 py-3 font-medium">HC15</th>
+                <th class="px-4 py-3 font-medium">HC19</th>
+                <th class="px-4 py-3 font-medium">Estado</th>
+                <th class="px-4 py-3 font-medium">Autorizador</th>
+                <th class="px-4 py-3 font-medium">Observación</th>
+                <th class="px-4 py-3 font-medium text-center">Tiempo</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-slate-100 text-slate-600 align-top">
+            <tbody class="text-slate-600 align-top bg-white">
               @for (e of filteredEgresos(); track e.id; let i = $index) {
                 <tr (click)="egresoClick.emit(e)" 
-                    class="transition-colors cursor-pointer group"
-                    [ngClass]="isDelayed(e) ? 'bg-red-50/60 hover:bg-red-100/80' : (hasActiveFilters() ? 'bg-white hover:bg-slate-50' : 'hover:bg-slate-50')">
+                    class="border-b border-slate-200 cursor-pointer group focus:outline-none hover:bg-slate-50 transition-colors duration-200"
+                    [ngClass]="isDelayed(e) ? 'bg-red-50/60 hover:bg-red-100/80' : (hasActiveFilters() ? 'bg-white' : '')">
                   <td class="px-4 py-3 text-center">
                     <span class="text-[10px] font-bold text-slate-400 bg-slate-100 w-6 h-6 flex items-center justify-center rounded-full border border-slate-200 group-hover:bg-slate-900 group-hover:text-white transition-colors">
                       {{ i + 1 }}

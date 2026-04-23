@@ -4,16 +4,17 @@ import { NotaOperatoriaService } from '../../services/nota-operatoria.service';
 import { MatIconModule } from '@angular/material/icon';
 import { NgClass, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { LucideAngularModule, Check, X, Clock } from 'lucide-angular';
 
 @Component({
   selector: 'app-nota-operatoria-list',
   standalone: true,
-  imports: [MatIconModule, NgClass, DatePipe, FormsModule],
+  imports: [MatIconModule, NgClass, DatePipe, FormsModule, LucideAngularModule],
   template: `
-    <div class="h-full p-2 animate-in fade-in duration-300 bg-slate-50">
-      <div class="rounded-xl shadow-sm border border-slate-200 overflow-hidden h-full flex flex-col" [ngClass]="hasActiveFilters() ? 'bg-slate-100/50' : 'bg-white'">
-        <div class="flex items-center justify-between px-4 py-3 border-b border-slate-200">
-          <h2 class="text-lg font-bold text-slate-900">Nota Operatoria</h2>
+    <div class="h-full animate-in fade-in duration-300 bg-white focus:outline-none">
+      <div class="h-full flex flex-col relative" [ngClass]="hasActiveFilters() ? 'bg-slate-50' : 'bg-white'">
+        <div class="flex items-center justify-between px-6 py-3 border-b border-slate-200 bg-white relative z-30">
+          <h2 class="text-xl font-bold text-slate-800 tracking-tight">Nota Operatoria</h2>
           <div class="flex items-center gap-2">
             <div class="relative">
               <button #filterButton (click)="toggleFilterMenu($event)" class="p-1 hover:bg-slate-100 rounded transition-colors"
@@ -63,13 +64,13 @@ import { FormsModule } from '@angular/forms';
         </div>
         <div class="overflow-auto flex-1 scrollbar-hide">
           <table class="w-full text-sm text-left whitespace-nowrap">
-            <thead class="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
+            <thead class="bg-slate-50 border-b border-slate-200 text-xs text-slate-500 sticky top-0 z-10">
               <tr>
-                <th class="px-4 py-3 font-semibold w-10">#</th>
-                <th class="px-4 py-3 font-semibold">Fecha/Hora</th>
-                <th class="px-4 py-3 font-semibold">Ingreso</th>
-                <th class="px-4 py-3 font-semibold">Paciente</th>
-                <th class="px-4 py-3 font-semibold">Entidad (EPS)
+                <th class="px-4 py-3 font-medium w-10">#</th>
+                <th class="px-4 py-3 font-medium">Fecha/Hora</th>
+                <th class="px-4 py-3 font-medium">Ingreso</th>
+                <th class="px-4 py-3 font-medium">Paciente</th>
+                <th class="px-4 py-3 font-medium w-[300px]">Entidad (EPS)
                   @if (getFilterSize('eps') > 0) {
                     <div class="inline-flex items-center gap-1 ml-2 bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-[9px]">
                       <mat-icon class="text-[10px] w-3 h-3">filter_list</mat-icon>
@@ -77,10 +78,8 @@ import { FormsModule } from '@angular/forms';
                     </div>
                   }
                 </th>
-                <th class="px-4 py-3 font-semibold">Procedimiento</th>
-                <th class="px-4 py-3 font-semibold">DX</th>
-                <th class="px-4 py-3 font-semibold">Autorizador</th>
-                <th class="px-4 py-3 font-semibold">AUTORIZACIÓN
+                <th class="px-4 py-3 font-medium w-[300px]">Procedimiento / DX</th>
+                <th class="px-4 py-3 font-medium">Autorizador
                   @if (getFilterSize('autorizacion') > 0) {
                     <div class="inline-flex items-center gap-1 ml-2 bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-[9px]">
                       <mat-icon class="text-[10px] w-3 h-3">filter_list</mat-icon>
@@ -88,7 +87,7 @@ import { FormsModule } from '@angular/forms';
                     </div>
                   }
                 </th>
-                <th class="px-4 py-3 font-semibold">SERVICIO
+                <th class="px-4 py-3 font-medium">SERVICIO
                   @if (getFilterSize('servicio') > 0) {
                     <div class="inline-flex items-center gap-1 ml-2 bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-[9px]">
                       <mat-icon class="text-[10px] w-3 h-3">filter_list</mat-icon>
@@ -98,11 +97,11 @@ import { FormsModule } from '@angular/forms';
                 </th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-slate-100 text-slate-600 align-top">
+            <tbody class="text-slate-600 align-top bg-white">
               @for (n of filteredNotas(); track n.id; let i = $index) {
                 <tr (click)="notaClick.emit(n)" 
-                    class="transition-colors cursor-pointer group"
-                    [ngClass]="hasActiveFilters() ? 'bg-white hover:bg-slate-50' : 'hover:bg-slate-50'">
+                    class="border-b border-slate-200 cursor-pointer group focus:outline-none hover:bg-slate-50 transition-colors duration-200"
+                    [ngClass]="hasActiveFilters() ? 'bg-white' : ''">
                   <td class="px-4 py-3 text-center">
                     <span class="text-[10px] font-bold text-slate-400 bg-slate-100 w-6 h-6 flex items-center justify-center rounded-full border border-slate-200 group-hover:bg-slate-900 group-hover:text-white transition-colors">
                       {{ i + 1 }}
@@ -126,33 +125,44 @@ import { FormsModule } from '@angular/forms';
                     <div class="font-bold text-[11px] text-slate-900 mb-0.5">{{ n.paciente }}</div>
                     <div class="text-[10px] text-slate-500 hover:text-emerald-600 transition-colors">CC: {{ n.documento }}</div>
                   </td>
-                  <td class="px-4 py-3 text-[11px] w-[600px] whitespace-normal">
+                  <td class="px-4 py-3 text-[11px] w-[300px] whitespace-normal">
                     <div class="font-semibold text-slate-800">{{ n.eps }}</div>
                   </td>
-                  <td class="px-4 py-3 text-[11px] max-w-[300px] whitespace-normal">
+                  <td class="px-4 py-3 text-[11px] w-[300px] whitespace-normal">
                     <div class="line-clamp-2 font-medium text-slate-800">{{ n.procedimiento }}</div>
-                    <div class="text-[9px] text-slate-400 mt-1 flex items-center gap-1">
-                      <span class="w-8 font-semibold">CUPS:</span>
-                      <span class="font-mono">{{ n.cups }}</span>
+                    <div class="text-[9px] text-slate-500 mt-1 flex items-center gap-2">
+                       <span class="font-mono text-slate-700 bg-slate-100 px-1 rounded">CUPS: {{ n.cups }}</span>
+                       <span class="font-mono text-slate-700 bg-slate-100 px-1 rounded">DX: {{ n.dx }}</span>
                     </div>
                   </td>
-                  <td class="px-4 py-3 text-[11px] font-mono text-slate-800">
-                    <div class="font-medium">{{ n.dx }}</div>
-                  </td>
-                  <td class="px-4 py-3 text-[11px]">
+                  <td class="px-4 py-3 text-[11px] flex flex-col items-start gap-1">
                     @if (n.autorizador) {
-                      <div class="inline-flex items-center gap-1.5 px-2 py-1 bg-emerald-50/50 text-emerald-800 border-l-2 border-emerald-500 rounded-sm font-bold uppercase tracking-tighter">
-                        <span class="leading-tight">{{ n.autorizador }}</span>
-                      </div>
+                      <span class="text-slate-700" [ngClass]="{'font-medium': n.autorizador.toUpperCase() !== 'GESTIONADO'}">{{ n.autorizador }}</span>
                     } @else {
                       <span class="text-slate-300 italic">Sin asignar</span>
                     }
-                  </td>
-                  <td class="px-4 py-3">
-                    <span class="px-2 py-0.5 rounded text-[9px] font-bold uppercase"
-                          [ngClass]="getStatusClass(n.autorizacion)">
-                      {{ n.autorizacion }}
-                    </span>
+                    @if (n.autorizacion) {
+                      @if (n.autorizacion.toUpperCase() === 'SI' || n.autorizacion.toUpperCase() === 'SÍ') {
+                        <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-bold mt-1 w-fit">
+                          <lucide-icon [name]="Check" class="w-2.5 h-2.5"></lucide-icon>
+                          Aut: SI
+                        </span>
+                      } @else if (n.autorizacion.toUpperCase() === 'NO') {
+                        <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 text-[9px] font-bold mt-1 w-fit">
+                          <lucide-icon [name]="X" class="w-2.5 h-2.5"></lucide-icon>
+                          Aut: NO
+                        </span>
+                      } @else if (n.autorizacion.toUpperCase() === 'PTE' || n.autorizacion.toUpperCase() === 'PENDIENTE') {
+                        <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[9px] font-bold mt-1 w-fit">
+                          <lucide-icon [name]="Clock" class="w-2.5 h-2.5"></lucide-icon>
+                          Aut: {{ n.autorizacion.toUpperCase() === 'PENDIENTE' ? 'PTE' : n.autorizacion.toUpperCase() }}
+                        </span>
+                      } @else {
+                        <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-slate-50 text-slate-700 border border-slate-200 text-[9px] font-bold mt-1 w-fit">
+                          Aut: {{ n.autorizacion.toUpperCase() }}
+                        </span>
+                      }
+                    }
                   </td>
                   <td class="px-4 py-3 text-[11px]">
                     @if (n.servicio) {
@@ -165,7 +175,7 @@ import { FormsModule } from '@angular/forms';
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="10" class="px-6 py-12 text-center text-slate-500">
+                  <td colspan="9" class="px-6 py-12 text-center text-slate-500">
                     <div class="flex flex-col items-center gap-2">
                       <mat-icon class="w-8 h-8 text-slate-300 text-[32px]">description</mat-icon>
                       No se encontraron notas operatorias.
@@ -181,6 +191,10 @@ import { FormsModule } from '@angular/forms';
   `
 })
 export class NotaOperatoriaListComponent {
+  readonly Check = Check;
+  readonly X = X;
+  readonly Clock = Clock;
+
   notas = input.required<NotaOperatoria[]>();
   activeFilter = input<{ folio: string | null, ingreso: string | null, paciente: string | null } | null>(null);
   
