@@ -7,7 +7,7 @@ import { EpsSoatService } from '../../services/eps-soat.service';
 import { ConsolidadoListComponent } from './consolidado-list.component';
 import { HeaderComponent } from '../../layout/header.component';
 import { MatIconModule } from '@angular/material/icon';
-import { LucideAngularModule, Filter, ChevronDown, Check, Search, X, LayoutGrid, ListFilter, RefreshCw } from 'lucide-angular';
+import { LucideAngularModule, Filter, ChevronDown, Check, Search, X, LayoutGrid, ListFilter, RefreshCw, Layers, Bed } from 'lucide-angular';
 
 // MODIFICADO: consolidado.component.ts no necesita cambios para el Realtime
 // porque consolidado.service.ts ya tiene la suscripción en iniciarRealtime()
@@ -21,15 +21,15 @@ import { LucideAngularModule, Filter, ChevronDown, Check, Search, X, LayoutGrid,
     class: 'block h-full'
   },
   template: `
-    <div class="flex flex-col h-full relative">
+    <div class="flex flex-col h-full relative bg-[#F8F9FA]">
       <!-- Header with Icons -->
       <app-header></app-header>
 
-      <!-- Header de la página -->
-      <div class="bg-white border-b border-slate-200 px-6 py-3 relative z-30">
+      <!-- Header de la página reubicado -->
+      <div class="px-6 pt-5 pb-2 relative z-30 shrink-0">
         <div class="flex items-center justify-between flex-wrap gap-4">
           <div class="flex items-center gap-4">
-            <h2 class="text-xl font-bold text-slate-800 tracking-tight">
+            <h2 class="text-[18px] font-semibold text-slate-800 tracking-tight">
               @switch (activeView()) {
                 @case ('pgp_aic') { Confirmación PGP AIC }
                 @case ('estancias_nuevas') { Estancias Nuevas }
@@ -42,39 +42,42 @@ import { LucideAngularModule, Filter, ChevronDown, Check, Search, X, LayoutGrid,
             <!-- Vistas Rápidas Filter (Senior Design) -->
             <div class="relative z-50">
               <button (click)="isSpecialFilterOpen.set(!isSpecialFilterOpen()); isServicioDropdownOpen.set(false)" 
-                      class="flex items-center gap-2 px-3 py-1.5 text-[11px] font-bold text-black bg-white hover:bg-slate-50 border border-slate-300 rounded-md shadow-sm transition-all uppercase tracking-wider">
+                      class="flex items-center gap-2 px-3 py-[7px] bg-white border border-slate-200 rounded-md text-[12px] font-medium text-slate-700 hover:bg-slate-50 transition-colors shadow-none focus:ring-1 focus:ring-slate-300 focus:outline-none">
+                <lucide-icon [name]="Layers" class="w-4 h-4"></lucide-icon>
                 <span>{{ getSpecialFilterLabel() }}</span>
-                <lucide-icon [name]="ChevronDown" class="w-3.5 h-3.5 opacity-50"></lucide-icon>
+                <lucide-icon [name]="ChevronDown" class="w-3.5 h-3.5 text-slate-500"></lucide-icon>
               </button>
 
               @if (isSpecialFilterOpen()) {
+                <!-- Backdrop -->
                 <div class="fixed inset-0 z-40" 
-                     (click)="isSpecialFilterOpen.set(false)" 
-                     (keydown.escape)="isSpecialFilterOpen.set(false)" 
+                     (click)="isSpecialFilterOpen.set(false)"
+                     (keydown.escape)="isSpecialFilterOpen.set(false)"
                      tabindex="0"></div>
-                <div class="absolute left-0 mt-2 w-64 bg-[#1e1e1e] text-white rounded-xl overflow-hidden shadow-2xl z-50 font-sans border border-[#333]">
+
+                <div class="absolute left-0 mt-2 w-64 bg-white text-slate-800 rounded-xl overflow-hidden shadow-2xl z-50 font-sans border border-slate-200">
                   <!-- Search input -->
-                  <div class="p-2 border-b border-[#333] relative flex items-center">
-                    <lucide-icon [name]="Search" class="w-3.5 h-3.5 text-slate-500 absolute left-3"></lucide-icon>
-                    <input type="text"
-                           [value]="specialFilterSearchTerm()"
+                  <div class="p-2 border-b border-slate-200 relative flex items-center">
+                    <lucide-icon [name]="Search" class="w-3.5 h-3.5 text-slate-400 absolute left-3"></lucide-icon>
+                    <input type="text" 
+                           [value]="specialFilterSearchTerm()" 
                            (input)="specialFilterSearchTerm.set($any($event.target).value)"
-                           class="w-full bg-transparent border-none text-[12px] pl-7 pr-2 py-1 text-white focus:outline-none placeholder:text-slate-500"
-                           placeholder="Buscar vista rápida..."
+                           class="w-full bg-slate-50 border-none rounded text-[12px] pl-7 pr-2 py-1.5 text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-300 placeholder:text-slate-400"
+                           placeholder="Buscar vista..."
                            (click)="$event.stopPropagation()">
                   </div>
                   <!-- Options -->
                   <div class="p-3 max-h-80 overflow-y-auto">
-                    <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2 px-2">Vistas Generales</div>
+                    <div class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-2 px-2">Vistas Generales</div>
                     <div class="space-y-0.5 mb-4">
                       @for (option of filteredSpecialOptions().slice(0, 1); track option.id) {
                         <button (click)="selectSpecialFilter(option.id)" 
-                                [class.bg-[#198bf6]]="selectedSpecialFilter() === option.id"
-                                [class.text-white]="selectedSpecialFilter() === option.id"
+                                [class.bg-blue-50]="selectedSpecialFilter() === option.id"
+                                [class.text-blue-700]="selectedSpecialFilter() === option.id"
                                 [class.font-medium]="selectedSpecialFilter() === option.id"
-                                class="w-full text-left px-2 py-1.5 text-[12px] rounded-md transition-colors hover:bg-white/10 flex items-center gap-2">
+                                class="w-full text-left px-2 py-1.5 text-[12px] rounded-md transition-colors hover:bg-slate-50 flex items-center gap-2">
                           @if (selectedSpecialFilter() === option.id) {
-                            <lucide-icon [name]="Check" class="w-3.5 h-3.5 text-white shrink-0"></lucide-icon>
+                            <lucide-icon [name]="Check" class="w-3.5 h-3.5 text-blue-600 shrink-0"></lucide-icon>
                           } @else {
                             <span class="w-3.5 h-3.5 shrink-0"></span>
                           }
@@ -83,22 +86,22 @@ import { LucideAngularModule, Filter, ChevronDown, Check, Search, X, LayoutGrid,
                       }
                     </div>
 
-                    <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2 px-2">Filtros Especiales</div>
+                    <div class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-2 px-2">Filtros Especiales</div>
                     <div class="space-y-0.5">
                       @for (option of filteredSpecialOptions().slice(1); track option.id) {
                         <button (click)="selectSpecialFilter(option.id)" 
-                                [class.bg-[#198bf6]]="selectedSpecialFilter() === option.id"
-                                [class.text-white]="selectedSpecialFilter() === option.id"
+                                [class.bg-blue-50]="selectedSpecialFilter() === option.id"
+                                [class.text-blue-700]="selectedSpecialFilter() === option.id"
                                 [class.font-medium]="selectedSpecialFilter() === option.id"
-                                class="w-full text-left px-2 py-1.5 text-[12px] rounded-md transition-colors hover:bg-white/10 flex items-center gap-2">
+                                class="w-full text-left px-2 py-1.5 text-[12px] rounded-md transition-colors hover:bg-slate-50 flex items-center gap-2">
                           @if (selectedSpecialFilter() === option.id) {
-                            <lucide-icon [name]="Check" class="w-3.5 h-3.5 text-white shrink-0"></lucide-icon>
+                            <lucide-icon [name]="Check" class="w-3.5 h-3.5 text-blue-600 shrink-0"></lucide-icon>
                           } @else {
                             <span class="w-3.5 h-3.5 shrink-0"></span>
                           }
                           <span>{{ option.label }}</span>
                           @if (option.id === 'giro' && loadingGiroCama()) {
-                            <lucide-icon [name]="RefreshCw" class="w-3 h-3 animate-spin text-white ml-auto"></lucide-icon>
+                            <lucide-icon [name]="RefreshCw" class="w-3 h-3 animate-spin text-blue-600 ml-auto"></lucide-icon>
                           }
                         </button>
                       }
@@ -115,12 +118,13 @@ import { LucideAngularModule, Filter, ChevronDown, Check, Search, X, LayoutGrid,
             <!-- Consolidado Filter (Estancias) -->
             <div class="relative z-50">
               <button (click)="isServicioDropdownOpen.set(!isServicioDropdownOpen()); isSpecialFilterOpen.set(false)" 
-                      class="flex items-center gap-2 px-3 py-1.5 text-[11px] font-bold text-black bg-white hover:bg-slate-50 border border-slate-300 rounded-md shadow-sm transition-all uppercase tracking-wider">
+                      class="flex items-center gap-2 px-3 py-[7px] bg-white border border-slate-200 rounded-md text-[12px] font-medium text-slate-700 hover:bg-slate-50 transition-colors shadow-none focus:ring-1 focus:ring-slate-300 focus:outline-none">
+                <lucide-icon [name]="Bed" class="w-4 h-4"></lucide-icon>
                 <span>Estancias</span>
                 @if (hasActiveFilters()) {
-                  <span class="flex h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                  <span class="flex h-1.5 w-1.5 rounded-full bg-blue-500 ml-1"></span>
                 }
-                <lucide-icon [name]="ChevronDown" class="w-3.5 h-3.5 opacity-50"></lucide-icon>
+                <lucide-icon [name]="ChevronDown" class="w-3.5 h-3.5 text-slate-500"></lucide-icon>
               </button>
 
               @if (isServicioDropdownOpen()) {
@@ -130,14 +134,14 @@ import { LucideAngularModule, Filter, ChevronDown, Check, Search, X, LayoutGrid,
                      (keydown.escape)="isServicioDropdownOpen.set(false)"
                      tabindex="0"></div>
                 
-                <div class="absolute left-0 z-50 mt-2 w-72 bg-[#1e1e1e] text-white rounded-xl shadow-2xl overflow-hidden font-sans border border-[#333]">
+                <div class="absolute left-0 z-50 mt-2 w-72 bg-white text-slate-800 rounded-xl shadow-2xl overflow-hidden font-sans border border-slate-200">
                   <!-- Search input -->
-                  <div class="p-2 border-b border-[#333] relative flex items-center">
-                    <lucide-icon [name]="Search" class="w-3.5 h-3.5 text-slate-500 absolute left-3"></lucide-icon>
+                  <div class="p-2 border-b border-slate-200 relative flex items-center">
+                    <lucide-icon [name]="Search" class="w-3.5 h-3.5 text-slate-400 absolute left-3"></lucide-icon>
                     <input type="text" 
                            [value]="servicioSearchTerm()" 
                            (input)="servicioSearchTerm.set($any($event.target).value)"
-                           class="w-full bg-transparent border-none text-[12px] pl-7 pr-2 py-1 text-white focus:outline-none placeholder:text-slate-500"
+                           class="w-full bg-slate-50 border-none rounded text-[12px] pl-7 pr-2 py-1.5 text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-300 placeholder:text-slate-400"
                            placeholder="Buscar estancia..."
                            (click)="$event.stopPropagation()">
                   </div>
@@ -146,28 +150,23 @@ import { LucideAngularModule, Filter, ChevronDown, Check, Search, X, LayoutGrid,
                     <!-- Urgencias Group -->
                     <div class="mb-3">
                       <button (click)="toggleAreaGroup('Urgencias'); $event.stopPropagation()"
-                              [class.text-[#198bf6]]="selectedAreaGroup() === 'Urgencias'"
-                              class="w-full flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider px-2 py-1.5 rounded-md hover:bg-white/5 transition-colors">
+                              class="w-full flex items-center justify-between text-[11px] font-semibold text-slate-600 uppercase tracking-wider px-2 py-1.5 rounded-md hover:bg-slate-50 transition-colors">
                         <div class="flex items-center gap-2">
-                          @if (selectedAreaGroup() === 'Urgencias' && (!selectedServicios() || selectedServicios()?.length === 0)) {
-                            <lucide-icon [name]="Check" class="w-3.5 h-3.5 text-[#198bf6] shrink-0"></lucide-icon>
-                          } @else {
-                            <span class="w-3.5 h-3.5 shrink-0"></span>
-                          }
                           <span>Urgencias</span>
                         </div>
-                        <lucide-icon [name]="ChevronDown" class="w-4 h-4 transition-transform" [class.rotate-180]="selectedAreaGroup() === 'Urgencias'"></lucide-icon>
+                        <lucide-icon [name]="ChevronDown" class="w-4 h-4 transition-transform text-slate-500" [class.rotate-180]="selectedAreaGroup() === 'Urgencias'"></lucide-icon>
                       </button>
                       
                       @if (selectedAreaGroup() === 'Urgencias') {
-                        <div class="mt-1 space-y-0.5 pl-2 border-l border-[#333] ml-2">
+                        <div class="mt-1 space-y-0.5 pl-2 border-l border-slate-200 ml-2">
                           @for (servicio of urgenciasServicios(); track servicio) {
                             <button (click)="toggleServicio(servicio); $event.stopPropagation()" 
-                                    [class.bg-[#198bf6]]="isServicioSelected(servicio)"
-                                    [class.text-white]="isServicioSelected(servicio)"
-                                    class="w-full text-left px-2 py-1.5 text-[12px] rounded-md transition-colors hover:bg-white/10 flex items-center gap-2">
+                                    [class.bg-blue-50]="isServicioSelected(servicio)"
+                                    [class.text-blue-700]="isServicioSelected(servicio)"
+                                    [class.font-medium]="isServicioSelected(servicio)"
+                                    class="w-full text-left px-2 py-1.5 text-[12px] rounded-md transition-colors hover:bg-slate-50 flex items-center gap-2">
                               @if (isServicioSelected(servicio)) {
-                                <lucide-icon [name]="Check" class="w-3 h-3 text-white shrink-0"></lucide-icon>
+                                <lucide-icon [name]="Check" class="w-3 h-3 text-blue-600 shrink-0"></lucide-icon>
                               } @else {
                                 <span class="w-3 h-3 shrink-0"></span>
                               }
@@ -175,7 +174,7 @@ import { LucideAngularModule, Filter, ChevronDown, Check, Search, X, LayoutGrid,
                             </button>
                           }
                           @if (urgenciasServicios().length === 0) {
-                            <div class="px-3 py-2 text-slate-500 italic text-[11px]">No hay resultados</div>
+                            <div class="px-3 py-2 text-slate-400 italic text-[11px]">No hay resultados</div>
                           }
                         </div>
                       }
@@ -184,28 +183,23 @@ import { LucideAngularModule, Filter, ChevronDown, Check, Search, X, LayoutGrid,
                     <!-- Hospitalización Group -->
                     <div>
                       <button (click)="toggleAreaGroup('Hospitalización'); $event.stopPropagation()"
-                              [class.text-[#198bf6]]="selectedAreaGroup() === 'Hospitalización'"
-                              class="w-full flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider px-2 py-1.5 rounded-md hover:bg-white/5 transition-colors">
+                              class="w-full flex items-center justify-between text-[11px] font-semibold text-slate-600 uppercase tracking-wider px-2 py-1.5 rounded-md hover:bg-slate-50 transition-colors">
                         <div class="flex items-center gap-2">
-                          @if (selectedAreaGroup() === 'Hospitalización' && (!selectedServicios() || selectedServicios()?.length === 0)) {
-                            <lucide-icon [name]="Check" class="w-3.5 h-3.5 text-[#198bf6] shrink-0"></lucide-icon>
-                          } @else {
-                            <span class="w-3.5 h-3.5 shrink-0"></span>
-                          }
                           <span>Hospitalización</span>
                         </div>
-                        <lucide-icon [name]="ChevronDown" class="w-4 h-4 transition-transform" [class.rotate-180]="selectedAreaGroup() === 'Hospitalización'"></lucide-icon>
+                        <lucide-icon [name]="ChevronDown" class="w-4 h-4 transition-transform text-slate-500" [class.rotate-180]="selectedAreaGroup() === 'Hospitalización'"></lucide-icon>
                       </button>
 
                       @if (selectedAreaGroup() === 'Hospitalización') {
-                        <div class="mt-1 space-y-0.5 pl-2 border-l border-[#333] ml-2">
+                        <div class="mt-1 space-y-0.5 pl-2 border-l border-slate-200 ml-2">
                           @for (servicio of hospitalizacionServicios(); track servicio) {
                             <button (click)="toggleServicio(servicio); $event.stopPropagation()" 
-                                    [class.bg-[#198bf6]]="isServicioSelected(servicio)"
-                                    [class.text-white]="isServicioSelected(servicio)"
-                                    class="w-full text-left px-2 py-1.5 text-[12px] rounded-md transition-colors hover:bg-white/10 flex items-center gap-2">
+                                    [class.bg-blue-50]="isServicioSelected(servicio)"
+                                    [class.text-blue-700]="isServicioSelected(servicio)"
+                                    [class.font-medium]="isServicioSelected(servicio)"
+                                    class="w-full text-left px-2 py-1.5 text-[12px] rounded-md transition-colors hover:bg-slate-50 flex items-center gap-2">
                               @if (isServicioSelected(servicio)) {
-                                <lucide-icon [name]="Check" class="w-3 h-3 text-white shrink-0"></lucide-icon>
+                                <lucide-icon [name]="Check" class="w-3 h-3 text-blue-600 shrink-0"></lucide-icon>
                               } @else {
                                 <span class="w-3 h-3 shrink-0"></span>
                               }
@@ -213,16 +207,16 @@ import { LucideAngularModule, Filter, ChevronDown, Check, Search, X, LayoutGrid,
                             </button>
                           }
                           @if (hospitalizacionServicios().length === 0) {
-                            <div class="px-3 py-2 text-slate-500 italic text-[11px]">No hay resultados</div>
+                            <div class="px-3 py-2 text-slate-400 italic text-[11px]">No hay resultados</div>
                           }
                         </div>
                       }
                     </div>
                     
                     <!-- Footer Actions -->
-                    <div class="mt-4 pt-3 border-t border-[#333] flex justify-between px-1">
-                      <button (click)="clearServicios(); selectedAreaGroup.set(null); $event.stopPropagation()" class="text-[10px] text-slate-400 hover:text-white transition-colors">Limpiar</button>
-                      <button (click)="selectAllServiciosEnGrupo(); $event.stopPropagation()" class="text-[10px] text-[#198bf6] font-medium hover:text-blue-400 transition-colors">Selec. grupo</button>
+                    <div class="mt-4 pt-3 border-t border-slate-200 flex justify-between px-1">
+                      <button (click)="clearServicios(); selectedAreaGroup.set(null); $event.stopPropagation()" class="text-[11px] font-medium text-slate-500 hover:text-slate-800 transition-colors">Limpiar</button>
+                      <button (click)="selectAllServiciosEnGrupo(); $event.stopPropagation()" class="text-[11px] text-blue-600 font-medium hover:text-blue-700 transition-colors">Selec. grupo</button>
                     </div>
                   </div>
                 </div>
@@ -232,7 +226,10 @@ import { LucideAngularModule, Filter, ChevronDown, Check, Search, X, LayoutGrid,
           </div>
           
           <div class="flex items-center gap-3">
-            <!-- right side menu items if any... -->
+            <button (click)="refreshData()" class="flex items-center gap-2 px-3 py-[7px] bg-white border border-slate-200 rounded-md text-[12px] font-medium text-slate-700 hover:bg-slate-50 transition-colors shadow-none focus:ring-1 focus:ring-slate-300 focus:outline-none">
+              <lucide-icon [name]="RefreshCw" class="w-3.5 h-3.5 text-slate-500"></lucide-icon>
+              Actualizar
+            </button>
           </div>
         </div>
       </div>
@@ -272,6 +269,8 @@ export class ConsolidadoComponent {
   readonly LayoutGrid = LayoutGrid;
   readonly ListFilter = ListFilter;
   readonly RefreshCw = RefreshCw;
+  readonly Layers = Layers;
+  readonly Bed = Bed;
 
   consolidadoService = inject(ConsolidadoService);
   areaAgrupacionService = inject(AreaAgrupacionService);
@@ -286,6 +285,10 @@ export class ConsolidadoComponent {
   isServicioDropdownOpen = signal(false);
   isAreaGroupDropdownOpen = signal(false);
   servicioSearchTerm = signal('');
+
+  refreshData() {
+    this.consolidadoService.loadRegistros();
+  }
 
   // Special Filter (Vistas Rápidas)
   isSpecialFilterOpen = signal(false);
@@ -356,7 +359,7 @@ export class ConsolidadoComponent {
   }
 
   hasActiveFilters = computed(() => {
-    return this.selectedAreaGroup() !== null || (this.selectedServicios() !== null && this.selectedServicios()!.length > 0);
+    return this.selectedServicios() !== null && this.selectedServicios()!.length > 0;
   });
 
   toggleServicio(servicio: string) {
@@ -445,7 +448,6 @@ export class ConsolidadoComponent {
       this.selectedAreaGroup.set(null);
     } else {
       this.selectedAreaGroup.set(group);
-      this.selectedServicios.set(null); // Clear specific locations selection when changing groups.
     }
   }
 
@@ -477,11 +479,6 @@ export class ConsolidadoComponent {
       } else {
         registros = registros.filter((r: ConsolidadoRecord) => selected.includes(r['area'] as string));
       }
-    }
-
-    const areaGroup = this.selectedAreaGroup();
-    if (areaGroup !== null) {
-      registros = registros.filter((r: ConsolidadoRecord) => this.areaAgrupacionService.getAreaGroup(r['area'] as string) === areaGroup);
     }
 
     const specialFilter = this.selectedSpecialFilter();

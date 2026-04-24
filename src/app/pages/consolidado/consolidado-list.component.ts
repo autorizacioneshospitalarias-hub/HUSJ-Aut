@@ -7,7 +7,7 @@ import { NgClass, DatePipe } from '@angular/common';
 import { ScrollingModule } from '@angular/cdk/scrolling';
 import { SupabaseService } from '../../services/supabase.service';
 import { PacienteConsolidadoModalComponent } from './paciente-consolidado-modal.component';
-import { LucideAngularModule, Trash2, PenLine, Check, X, AlertTriangle, Clock, Search, FileText, RefreshCw, AlertCircle, ChevronDown, Filter, ArrowUpDown, ArrowUp, ArrowDown, Plus, Eye, History, Download, MoreHorizontal, MapPin, Building2, CheckSquare, FileSignature, LayoutDashboard, FolderHeart, PlusCircle, FolderX, UserCog, Building, SearchX, Badge, CalendarRange, User, Code, CheckCircle } from 'lucide-angular';
+import { LucideAngularModule, Trash2, PenLine, Check, X, AlertTriangle, Clock, Search, FileText, RefreshCw, AlertCircle, ChevronDown, Filter, ArrowUpDown, ArrowUp, ArrowDown, Plus, Eye, History, Download, MoreHorizontal, MapPin, Building2, CheckSquare, FileSignature, LayoutDashboard, FolderHeart, PlusCircle, FolderX, UserCog, Building, MessageSquare, SearchX, Badge, CalendarRange, User, Code, CheckCircle, ChevronLeft, ChevronRight, Ambulance } from 'lucide-angular';
 
 interface TramiteHistory {
   fecha: string;
@@ -54,94 +54,87 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
   providers: [],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="h-full animate-in fade-in duration-300 bg-white focus:outline-none" role="button" tabindex="0">
-      <div class="h-full flex flex-col relative"
+    <div class="h-full animate-in fade-in duration-300 px-6 pb-6 pt-1 focus:outline-none" role="button" tabindex="0">
+      <div class="h-full flex flex-col relative bg-white border border-slate-200/80 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.05)] overflow-hidden"
            [ngClass]="[
-             view() === 'validacion_derechos' ? 'max-w-[1000px] mx-auto' : '',
-             hasActiveFilters() ? 'bg-slate-50' : 'bg-white'
+             view() === 'validacion_derechos' ? 'max-w-[1000px] mx-auto' : ''
            ]">
+           
         <div class="overflow-auto flex-1">
-          <table class="w-full text-sm text-left whitespace-nowrap border-separate border-spacing-y-1.5">
-            <thead class="text-[11px] font-medium text-slate-500 uppercase tracking-wider sticky top-0 z-10 transition-colors">
-              <tr class="bg-slate-100/80 backdrop-blur-md shadow-sm">
-                <th class="px-4 py-3 first:rounded-l-lg last:rounded-r-lg w-10">#</th>
+          <table class="w-full text-left whitespace-nowrap table-auto border-separate border-spacing-0">
+            <thead class="text-[11px] font-medium text-slate-500 bg-[#F8F9FA] sticky top-0 z-10 shadow-[0_1px_0_rgba(226,232,240,1)]">
+              <tr>
+                <th class="px-5 py-2.5 w-10 font-medium">#</th>
                 
                 <!-- Ubicación -->
-                <th class="px-4 py-3 first:rounded-l-lg last:rounded-r-lg min-w-[200px] cursor-pointer hover:text-slate-700 transition-colors group/header relative" (click)="toggleSort('area')">
+                <th class="px-5 py-2.5 min-w-[200px] cursor-pointer hover:text-slate-700 transition-colors group/header relative font-medium" (click)="toggleSort('area')">
                   <div class="flex items-center gap-2">
-                    <lucide-icon [name]="MapPin" class="w-3.5 h-3.5 text-slate-400"></lucide-icon>
+                    <lucide-icon [name]="MapPin" class="w-4 h-4 text-slate-400"></lucide-icon>
                     <span>Ubicación</span>
                     <button class="opacity-0 group-hover/header:opacity-100 transition-opacity ml-1 p-1 hover:bg-slate-200 rounded" (click)="toggleColumnFilterInput('area', $event)">
-                      <lucide-icon [name]="Filter" class="w-3 h-3 text-slate-500" [class.text-emerald-500]="columnFilters()['area']"></lucide-icon>
+                      <lucide-icon [name]="Filter" class="w-3 h-3 text-slate-500" [class.text-slate-800]="columnFilters()['area']"></lucide-icon>
                     </button>
-                    <lucide-icon [name]="getSortIcon('area')" class="w-3.5 h-3.5 text-black ml-auto"></lucide-icon>
+                    <lucide-icon [name]="getSortIcon('area')" class="w-3.5 h-3.5 text-slate-400 ml-auto"></lucide-icon>
                   </div>
                   @if (activeColumnFilterInputs()['area']) {
                     <div class="absolute left-4 right-4 top-10 z-20" (click)="$event.stopPropagation()">
-                      <input type="text" placeholder="Filtrar..." [value]="columnFilters()['area'] || ''" (input)="setColumnFilter('area', $any($event.target).value)" class="w-full text-xs p-1.5 border border-emerald-300 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-md">
+                      <input type="text" placeholder="Filtrar..." [value]="columnFilters()['area'] || ''" (input)="setColumnFilter('area', $any($event.target).value)" class="w-full text-[11px] p-1.5 border-b border-slate-300 border-x-0 border-t-0 bg-white rounded-none shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] focus:outline-none focus:ring-0 focus:border-slate-500">
                     </div>
                   }
                 </th>
 
                 <!-- Paciente -->
-                <th class="px-4 py-3 first:rounded-l-lg last:rounded-r-lg font-medium min-w-[200px] group/header relative">
+                <th class="px-5 py-2.5 min-w-[200px] group/header relative font-medium">
                   <div class="flex items-center gap-2">
                     <span>Paciente</span>
                     <button class="opacity-0 group-hover/header:opacity-100 transition-opacity ml-1 p-1 hover:bg-slate-200 rounded" (click)="toggleColumnFilterInput('paciente', $event)">
-                      <lucide-icon [name]="Filter" class="w-3 h-3 text-slate-500" [class.text-emerald-500]="columnFilters()['paciente']"></lucide-icon>
+                      <lucide-icon [name]="Filter" class="w-3 h-3 text-slate-500" [class.text-slate-800]="columnFilters()['paciente']"></lucide-icon>
                     </button>
                   </div>
                   @if (activeColumnFilterInputs()['paciente']) {
                     <div class="absolute left-4 right-4 top-10 z-20" (click)="$event.stopPropagation()">
-                      <input type="text" placeholder="Filtrar..." [value]="columnFilters()['paciente'] || ''" (input)="setColumnFilter('paciente', $any($event.target).value)" class="w-full text-xs p-1.5 border border-emerald-300 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-md">
+                      <input type="text" placeholder="Filtrar..." [value]="columnFilters()['paciente'] || ''" (input)="setColumnFilter('paciente', $any($event.target).value)" class="w-full text-[11px] p-1.5 border-b border-slate-300 border-x-0 border-t-0 bg-white rounded-none shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] focus:outline-none focus:ring-0 focus:border-slate-500">
                     </div>
                   }
                 </th>
 
                 <!-- Admisión -->
-                <th class="px-4 py-3 first:rounded-l-lg last:rounded-r-lg font-medium min-w-[150px] group/header relative">
+                <th class="px-5 py-2.5 min-w-[150px] group/header relative font-medium">
                   <div class="flex items-center gap-2">
                     <span>Admisión</span>
-                    <button class="opacity-0 group-hover/header:opacity-100 transition-opacity ml-1 p-1 hover:bg-slate-200 rounded" (click)="toggleColumnFilterInput('admision', $event)">
-                      <lucide-icon [name]="Filter" class="w-3 h-3 text-slate-500" [class.text-emerald-500]="columnFilters()['admision']"></lucide-icon>
-                    </button>
                   </div>
-                  @if (activeColumnFilterInputs()['admision']) {
-                    <div class="absolute left-4 right-4 top-10 z-20" (click)="$event.stopPropagation()">
-                      <input type="text" placeholder="Filtrar..." [value]="columnFilters()['admision'] || ''" (input)="setColumnFilter('admision', $any($event.target).value)" class="w-full text-xs p-1.5 border border-emerald-300 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-md">
-                    </div>
-                  }
                 </th>
 
                 <!-- Entidad -->
-                <th class="px-4 py-3 first:rounded-l-lg last:rounded-r-lg font-medium min-w-[250px] max-w-[400px] cursor-pointer hover:text-slate-700 transition-colors group/header relative" (click)="toggleSort('entidad')">
+                <th class="px-5 py-2.5 min-w-[250px] max-w-[400px] cursor-pointer hover:text-slate-700 transition-colors group/header relative font-medium" (click)="toggleSort('entidad')">
                   <div class="flex items-center gap-2">
-                    <lucide-icon [name]="Building2" class="w-3.5 h-3.5 text-slate-400"></lucide-icon>
+                    <lucide-icon [name]="Building2" class="w-4 h-4 text-slate-400"></lucide-icon>
                     <span>Entidad</span>
+                    <lucide-icon [name]="getSortIcon('entidad')" class="w-3.5 h-3.5 text-slate-400 ml-auto"></lucide-icon>
                     <button class="opacity-0 group-hover/header:opacity-100 transition-opacity ml-1 p-1 hover:bg-slate-200 rounded" (click)="toggleColumnFilterInput('entidad', $event)">
-                      <lucide-icon [name]="Filter" class="w-3 h-3 text-slate-500" [class.text-emerald-500]="columnFilters()['entidad']"></lucide-icon>
+                      <lucide-icon [name]="Filter" class="w-3 h-3 text-slate-500" [class.text-slate-800]="columnFilters()['entidad']"></lucide-icon>
                     </button>
-                    <lucide-icon [name]="getSortIcon('entidad')" class="w-3.5 h-3.5 text-black ml-auto"></lucide-icon>
                   </div>
                   @if (activeColumnFilterInputs()['entidad']) {
                     <div class="absolute left-4 right-4 top-10 z-20" (click)="$event.stopPropagation()">
-                      <input type="text" placeholder="Filtrar..." [value]="columnFilters()['entidad'] || ''" (input)="setColumnFilter('entidad', $any($event.target).value)" class="w-full text-xs p-1.5 border border-emerald-300 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-md">
+                      <input type="text" placeholder="Filtrar..." [value]="columnFilters()['entidad'] || ''" (input)="setColumnFilter('entidad', $any($event.target).value)" class="w-full text-[11px] p-1.5 border-b border-slate-300 border-x-0 border-t-0 bg-white rounded-none shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] focus:outline-none focus:ring-0 focus:border-slate-500">
                     </div>
                   }
                 </th>
 
+
                 <!-- Gestión Estancia -->
                 @if (view() === 'general' || view() === 'estancias_nuevas' || view() === 'seguimiento') {
-                  <th class="px-4 py-3 first:rounded-l-lg last:rounded-r-lg font-medium min-w-[180px] group/header relative">
+                  <th class="px-5 py-2.5 font-medium min-w-[180px] group/header relative">
                     <div class="flex items-center gap-2">
                       <span>Gestión estancia</span>
                       <button class="opacity-0 group-hover/header:opacity-100 transition-opacity ml-1 p-1 hover:bg-slate-200 rounded" (click)="toggleColumnFilterInput('gestion', $event)">
-                        <lucide-icon [name]="Filter" class="w-3 h-3 text-slate-500" [class.text-emerald-500]="columnFilters()['gestion']"></lucide-icon>
+                        <lucide-icon [name]="Filter" class="w-3 h-3 text-slate-500" [class.text-slate-800]="columnFilters()['gestion']"></lucide-icon>
                       </button>
                     </div>
                     @if (activeColumnFilterInputs()['gestion']) {
                       <div class="absolute left-4 right-4 top-10 z-20" (click)="$event.stopPropagation()">
-                        <input type="text" placeholder="Filtrar..." [value]="columnFilters()['gestion'] || ''" (input)="setColumnFilter('gestion', $any($event.target).value)" class="w-full text-xs p-1.5 border border-emerald-300 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-md">
+                        <input type="text" placeholder="Filtrar..." [value]="columnFilters()['gestion'] || ''" (input)="setColumnFilter('gestion', $any($event.target).value)" class="w-full text-[11px] p-1.5 border-b border-slate-300 border-x-0 border-t-0 bg-white rounded-none shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] focus:outline-none focus:ring-0 focus:border-slate-500">
                       </div>
                     }
                   </th>
@@ -149,16 +142,16 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
 
                 <!-- Novedades -->
                 @if (view() === 'general' || view() === 'estancias_nuevas' || view() === 'seguimiento') {
-                  <th class="px-4 py-3 first:rounded-l-lg last:rounded-r-lg font-medium min-w-[250px] group/header relative">
+                  <th class="px-5 py-2.5 font-medium min-w-[250px] group/header relative">
                     <div class="flex items-center gap-2">
                       <span>Novedades</span>
                       <button class="opacity-0 group-hover/header:opacity-100 transition-opacity ml-1 p-1 hover:bg-slate-200 rounded" (click)="toggleColumnFilterInput('novedades', $event)">
-                        <lucide-icon [name]="Filter" class="w-3 h-3 text-slate-500" [class.text-emerald-500]="columnFilters()['novedades']"></lucide-icon>
+                        <lucide-icon [name]="Filter" class="w-3 h-3 text-slate-500" [class.text-slate-800]="columnFilters()['novedades']"></lucide-icon>
                       </button>
                     </div>
                     @if (activeColumnFilterInputs()['novedades']) {
                       <div class="absolute left-4 right-4 top-10 z-20" (click)="$event.stopPropagation()">
-                        <input type="text" placeholder="Filtrar..." [value]="columnFilters()['novedades'] || ''" (input)="setColumnFilter('novedades', $any($event.target).value)" class="w-full text-xs p-1.5 border border-emerald-300 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-md">
+                        <input type="text" placeholder="Filtrar..." [value]="columnFilters()['novedades'] || ''" (input)="setColumnFilter('novedades', $any($event.target).value)" class="w-full text-[11px] p-1.5 border-b border-slate-300 border-x-0 border-t-0 bg-white rounded-none shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] focus:outline-none focus:ring-0 focus:border-slate-500">
                       </div>
                     }
                   </th>
@@ -166,42 +159,42 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
 
                 <!-- Soportes -->
                 @if (view() === 'general' || view() === 'estancias_nuevas' || view() === 'seguimiento') {
-                  <th class="px-4 py-3 first:rounded-l-lg last:rounded-r-lg font-medium w-24">
+                  <th class="px-5 py-2.5 font-medium w-24">
                     <span>Soportes</span>
                   </th>
                 }
                 
                 <!-- Consolidado -->
-                <th class="px-4 py-3 first:rounded-l-lg last:rounded-r-lg font-medium w-24 text-center">
+                <th class="px-5 py-2.5 font-medium w-24 text-center">
                   <span>Consolidado</span>
                 </th>
 
                 @if (view() === 'pgp_aic') {
-                  <th class="px-4 py-3 first:rounded-l-lg last:rounded-r-lg font-medium min-w-[150px]">
+                  <th class="px-5 py-2.5 font-medium min-w-[150px]">
                     <span>Confirmación pgp</span>
                   </th>
-                  <th class="px-4 py-3 first:rounded-l-lg last:rounded-r-lg font-medium min-w-[200px]">
+                  <th class="px-5 py-2.5 font-medium min-w-[200px]">
                     <span>Justificación</span>
                   </th>
                 }
               </tr>
             </thead>
-            <tbody class="text-slate-600 align-top">
+            <tbody class="text-slate-600 align-top text-[11px]">
               @for (r of paginatedRegistros(); track r._idStr; let i = $index) {
-                <tr class="cursor-default group focus:outline-none shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
+                <tr class="border-b border-slate-100 cursor-default group focus:outline-none"
                     [ngClass]="{
-                      'bg-red-200 transition-none': consolidadoService.registrosActualizados().has(r._idStr),
-                      'bg-white transition-colors duration-200 hover:bg-slate-50/80': !consolidadoService.registrosActualizados().has(r._idStr)
+                      'bg-red-50 transition-none': consolidadoService.registrosActualizados().has(r._idStr),
+                      'bg-white transition-colors duration-200 hover:bg-slate-50': !consolidadoService.registrosActualizados().has(r._idStr)
                     }">
                   <!-- Enumeración -->
-                  <td class="px-4 py-4 text-center first:rounded-l-lg last:rounded-r-lg">
-                    <span class="text-[10px] font-bold text-slate-400 bg-slate-100 w-6 h-6 flex items-center justify-center rounded-full border border-slate-200 group-hover:bg-slate-900 group-hover:text-white transition-colors">
+                  <td class="px-5 py-4 text-center border-b border-slate-100">
+                    <span class="text-[10px] font-medium text-slate-400">
                       {{ i + 1 }}
                     </span>
                   </td>
                   
                   <!-- Ubicación -->
-                  <td class="px-4 py-4 first:rounded-l-lg last:rounded-r-lg text-[11px] whitespace-normal">
+                  <td class="px-5 py-4 border-b border-slate-100 whitespace-normal">
                     <div class="flex items-start justify-between gap-2 group/ubicacion">
                       <div>
                         <div class="font-medium text-slate-800 mb-0.5" [class.bg-missing-value]="!r['area']">{{ r['area'] || 'N/A' }}</div>
@@ -217,7 +210,7 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                   </td>
 
                   <!-- Paciente -->
-                  <td class="px-4 py-4 first:rounded-l-lg last:rounded-r-lg text-[11px] whitespace-normal">
+                  <td class="px-5 py-4 border-b border-slate-100 whitespace-normal">
                     <div class="flex items-start justify-between gap-2 group/paciente">
                       <div>
                         <div class="font-bold text-slate-900 mb-1" [class.bg-missing-value]="!r['nombre']">{{ r['nombre'] || 'N/A' }}</div>
@@ -267,34 +260,34 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                   </td>
 
                   <!-- Admisión -->
-                  <td class="px-4 py-4 first:rounded-l-lg last:rounded-r-lg text-[11px] whitespace-normal">
+                  <td class="px-5 py-4 border-b border-slate-100 whitespace-normal">
                     <div class="flex flex-col gap-2">
                        <div class="flex items-center justify-between gap-3">
                          <div class="flex flex-col">
-                           <span class="text-[9px] text-slate-400 font-bold uppercase tracking-wider leading-none mb-0.5">F. Ingreso</span>
-                           <span class="font-mono text-slate-700 leading-none">{{ r._fechaIngresoFormatted }}</span>
+                           <span class="text-[9px] text-slate-400 uppercase tracking-wider leading-none mb-0.5">F. Ingreso</span>
+                           <span class="text-[10px] text-slate-500 font-mono leading-tight">{{ r._fechaIngresoFormatted }}</span>
                          </div>
-                         <span class="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 py-0.5 rounded shadow-sm w-10 text-center shrink-0 inline-block" title="Días Ingreso">{{ r['dias_ingr'] || 0 }}d</span>
+                         <span class="text-[10px] text-slate-600 bg-slate-100 border border-slate-200 py-0.5 rounded w-10 text-center shrink-0 inline-block" title="Días Ingreso">{{ r['dias_ingr'] || 0 }}d</span>
                        </div>
                        
                        <div class="flex items-center justify-between gap-3">
                          <div class="flex flex-col">
-                           <span class="text-[9px] text-slate-400 font-bold uppercase tracking-wider leading-none mb-0.5">F. HOSPITALIZACIÓN</span>
-                           <span class="font-mono text-slate-700 leading-none">{{ r._fechaHospFormatted }}</span>
+                           <span class="text-[9px] text-slate-400 uppercase tracking-wider leading-none mb-0.5">F. Hospitalización</span>
+                           <span class="text-[10px] text-slate-500 font-mono leading-tight">{{ r._fechaHospFormatted }}</span>
                          </div>
-                         <span class="text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200 py-0.5 rounded shadow-sm w-10 text-center shrink-0 inline-block" title="Días Hospitalización">{{ r['dias_hosp'] || 0 }}d</span>
+                         <span class="text-[10px] text-slate-600 bg-slate-100 border border-slate-200 py-0.5 rounded w-10 text-center shrink-0 inline-block" title="Días Hospitalización">{{ r['dias_hosp'] || 0 }}d</span>
                        </div>
                     </div>
                   </td>
 
                   <!-- Entidad -->
-                  <td class="px-4 py-4 first:rounded-l-lg last:rounded-r-lg text-[11px] whitespace-normal max-w-[400px]">
+                  <td class="px-5 py-4 border-b border-slate-100 whitespace-normal max-w-[400px]">
                     <div class="flex items-start justify-between gap-2 group/entidad">
                       <div>
-                        <div class="font-semibold text-slate-800 mb-0.5 flex items-center flex-wrap gap-1">
+                        <div class="font-medium text-slate-800 mb-0.5 flex items-center flex-wrap gap-1">
                           {{ r['entidad'] || 'N/A' }}
                           @if (r._isSinConvenio) {
-                            <span class="text-[9px] font-bold border border-slate-800 text-slate-800 px-1.5 py-0.5 rounded uppercase whitespace-nowrap">SIN CONVENIO</span>
+                            <span class="text-[9px] font-normal border border-slate-800 text-slate-800 px-1.5 py-0.5 rounded uppercase whitespace-nowrap">SIN CONVENIO</span>
                           }
                         </div>
                         <div class="text-[10px] text-slate-500 mb-0.5">Contrato: {{ r['contrato'] || 'N/A' }}</div>
@@ -334,43 +327,52 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
 
                   <!-- Gestión Estancia -->
                   @if (view() === 'general' || view() === 'estancias_nuevas' || view() === 'seguimiento') {
-                    <td class="px-4 py-4 first:rounded-l-lg last:rounded-r-lg text-[11px] whitespace-normal">
+                    <td class="px-5 py-4 border-b border-slate-100 whitespace-normal">
                       <div class="flex items-start justify-between gap-2 group/gestion">
-                        <div class="flex flex-col gap-1 w-[140px]">
+                        <div class="flex flex-col gap-1.5 w-[140px]">
                           <!-- Aut Tag -->
-                          <div class="flex items-center justify-between gap-1.5 bg-slate-50 border border-slate-200 rounded px-2 py-1">
-                            <span class="text-[10px] font-bold text-slate-600 shrink-0">Autorización:</span>
+                          <div class="flex items-center justify-between gap-1.5 bg-slate-100/50 border border-slate-200 rounded-md px-2 py-1">
+                            <span class="text-[10px] font-medium text-slate-500 shrink-0">Aut:</span>
                             @if (r['aut_estancia'] === 'SI') {
-                              <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-bold">
-                                <lucide-icon [name]="Check" class="w-2.5 h-2.5"></lucide-icon>
+                              <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm bg-emerald-100 text-emerald-800 text-[10px] font-bold tracking-tight">
+                                <lucide-icon [name]="Check" class="w-3 h-3 text-emerald-600"></lucide-icon>
                                 SI
                               </span>
                             } @else if (r['aut_estancia'] === 'NO') {
-                              <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 text-[9px] font-bold">
-                                <lucide-icon [name]="X" class="w-2.5 h-2.5"></lucide-icon>
+                              <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm bg-red-100 text-red-800 text-[10px] font-bold tracking-tight">
+                                <lucide-icon [name]="X" class="w-3 h-3 text-red-600"></lucide-icon>
                                 NO
                               </span>
                             } @else if (r['aut_estancia'] === 'PGP') {
-                              <span class="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 flex items-center justify-center text-[9px] font-bold">PGP</span>
+                              <span class="inline-flex items-center justify-center px-1.5 py-0.5 rounded-sm bg-blue-100 text-blue-800 text-[10px] font-bold tracking-tight">
+                                PGP
+                              </span>
                             } @else if (r['aut_estancia'] === 'PP') {
-                              <span class="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center text-[9px] font-bold">PP</span>
+                              <span class="inline-flex items-center justify-center px-1.5 py-0.5 rounded-sm bg-amber-100 text-amber-800 text-[10px] font-bold tracking-tight">
+                                PP
+                              </span>
                             } @else {
-                              <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 text-[9px] font-bold uppercase">
-                                <lucide-icon [name]="Clock" class="w-2.5 h-2.5 text-amber-500"></lucide-icon>
-                                Pend
+                              <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-bold uppercase tracking-tight">
+                                <lucide-icon [name]="Clock" class="w-3 h-3"></lucide-icon>
+                                PEND
                               </span>
                             }
                           </div>
                           <!-- Gestión Tag -->
-                          <div class="flex flex-col items-center justify-center bg-slate-50 border border-slate-200 rounded px-2 py-1.5">
-                            <span class="text-[9px] font-bold text-slate-500 uppercase">Próxima Gestión</span>
-                            <span class="text-[11px] text-slate-800" [title]="r['fecha_proxima_gestion'] || r['gestion_estancia'] || 'Sin fecha'">
-                              {{ r['fecha_proxima_gestion'] || r['gestion_estancia'] || '---' }}
-                            </span>
+                          <div class="flex flex-col items-start bg-slate-100/50 border border-slate-200 rounded-md px-2.5 py-1.5 relative overflow-hidden">
+                            <span class="text-[9px] font-semibold text-slate-400 uppercase tracking-widest mb-0.5">Gestión</span>
+                            <div class="flex items-center gap-1.5">
+                              <lucide-icon [name]="CalendarRange" class="w-3.5 h-3.5 text-slate-400"></lucide-icon>
+                              <span class="text-[11px] font-medium text-slate-700" [title]="r['fecha_proxima_gestion'] || r['gestion_estancia'] || 'Sin fecha'">
+                                {{ r['fecha_proxima_gestion'] || r['gestion_estancia'] || '---' }}
+                              </span>
+                            </div>
+                            <!-- Small accent bar on the left -->
+                            <div class="absolute left-0 top-0 bottom-0 w-1" [class.bg-red-500]="r['fecha_proxima_gestion'] && r['fecha_proxima_gestion'].substring(0, 10) === getBogotaDateOnly()" [class.bg-slate-300]="!(r['fecha_proxima_gestion'] && r['fecha_proxima_gestion'].substring(0, 10) === getBogotaDateOnly())"></div>
                           </div>
                         </div>
                         <div class="flex flex-col items-center gap-1 shrink-0">
-                          <button (click)="openGestionModal(r)" class="text-slate-400 hover:text-slate-800 opacity-0 group-hover/gestion:opacity-100 transition-opacity p-1 rounded hover:bg-slate-200 shrink-0" title="Editar gestión">
+                          <button (click)="openGestionModal(r)" class="text-slate-400 hover:text-blue-600 opacity-0 group-hover/gestion:opacity-100 transition-colors p-1 rounded-md hover:bg-blue-50 shrink-0" title="Editar gestión">
                             <lucide-icon [name]="PenLine" class="w-4 h-4"></lucide-icon>
                           </button>
                         </div>
@@ -380,39 +382,74 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
 
                   <!-- Novedades -->
                   @if (view() === 'general' || view() === 'estancias_nuevas' || view() === 'seguimiento') {
-                    <td class="px-4 py-4 first:rounded-l-lg last:rounded-r-lg text-[11px] whitespace-normal min-w-[250px]">
+                    <td class="px-5 py-4 border-b border-slate-100 whitespace-normal min-w-[250px]">
                       <div class="flex items-start justify-between gap-2 group/obs">
-                        <div class="flex-1 flex flex-col gap-1">
-                          <!-- Proceso Notif -->
-                          <div class="font-bold text-slate-800 flex items-center justify-between">
-                            @if (r._hasTramiteHistory) {
-                              <span>{{ r['proceso_notif'] || 'Sin proceso' }}</span>
-                            } @else {
-                              <span class="text-[10px] text-slate-500 italic font-normal">Sin Novedades</span>
-                            }
-                            <button (click)="openTramiteModal(r)" 
-                                    [class]="r._hasTramiteHistory ? 'text-blue-600 hover:text-blue-800' : 'text-slate-400 hover:text-slate-800 opacity-0 group-hover/obs:opacity-100'" 
-                                    class="transition-opacity p-1 rounded hover:bg-slate-200" title="Ver/Editar trámite">
-                              <lucide-icon [name]="r._hasTramiteHistory ? FileText : PenLine" class="w-3.5 h-3.5"></lucide-icon>
-                            </button>
-                          </div>
-                          
-                          <!-- Latest Tramite Note & Date -->
-                          @if (r._latestTramite) {
-                            <div class="text-[10px] text-slate-600 bg-slate-50 px-2 py-1 rounded border border-slate-100">
-                              <div class="font-medium mb-0.5">{{ r._latestTramite }}</div>
-                              @if (r._latestTramiteDate) {
-                                <div class="text-[9px] text-slate-400 font-mono">{{ r._latestTramiteDate }}</div>
+                        <div class="flex-1 flex flex-col gap-1.5">
+                          <!-- Proceso Notif & Actions -->
+                          <div class="flex items-center justify-between">
+                            <div class="font-medium text-slate-800 text-[11px]">
+                              @if (r._hasTramiteHistory) {
+                                {{ r['proceso_notif'] || 'Sin proceso' }}
+                              } @else {
+                                <span class="text-slate-400 italic"></span>
                               }
                             </div>
-                          }
+                            
+                            <div class="flex items-center gap-1">
+                              <!-- Tramite Action -->
+                              <button (click)="openTramiteModal(r)" 
+                                      class="relative p-1.5 rounded-md hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-700" 
+                                      [title]="r._hasTramiteHistory ? 'Ver/Editar trámite' : 'Agregar trámite'">
+                                <lucide-icon [name]="FileText" class="w-3.5 h-3.5"></lucide-icon>
+                                @if (r._hasTramiteHistory) {
+                                  <span class="absolute top-[2px] right-[2px] w-1.5 h-1.5 bg-red-500 rounded-full border border-white"></span>
+                                }
+                              </button>
+                              
+                              <!-- Observaciones Action -->
+                              <button (click)="openObsModal(r)" 
+                                      class="relative p-1.5 rounded-md hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-700" 
+                                      [title]="r._visibleObs ? 'Editar observación' : 'Agregar observación'">
+                                <lucide-icon [name]="MessageSquare" class="w-3.5 h-3.5"></lucide-icon>
+                                @if (r._visibleObs) {
+                                  <span class="absolute top-[2px] right-[2px] w-1.5 h-1.5 bg-amber-500 rounded-full border border-white"></span>
+                                }
+                              </button>
+                            </div>
+                          </div>
+                          
+                          <!-- Content Area -->
+                          <div class="flex flex-col gap-1.5 mt-0.5">
+                            <!-- Latest Tramite Note -->
+                            @if (r._latestTramite) {
+                              <div class="flex gap-2 p-1.5 rounded-md bg-slate-50 border border-slate-100 relative">
+                                <div class="absolute left-0 top-1 bottom-1 w-0.5 bg-blue-300 rounded-r-full"></div>
+                                <div class="flex-1 min-w-0 pl-1">
+                                  <div class="text-[10px] text-slate-700 leading-snug flex items-center gap-1.5">
+                                    @if (r._latestTramite.includes('Referencia')) {
+                                      <div class="relative">
+                                        <lucide-icon [name]="Ambulance" class="w-3.5 h-3.5 text-red-500"></lucide-icon>
+                                        <span class="absolute -top-1 -right-0.5 w-1.5 h-1.5 bg-red-500 rounded-full border border-white"></span>
+                                      </div>
+                                    }
+                                    {{ r._latestTramite }}
+                                  </div>
+                                  @if (r._latestTramiteDate) {
+                                    <div class="text-[9px] text-slate-400 font-medium mt-0.5">{{ r._latestTramiteDate }}</div>
+                                  }
+                                </div>
+                              </div>
+                            }
 
-                          <!-- Observaciones -->
-                          <div class="text-[10px] text-slate-500 italic whitespace-pre-line leading-relaxed mt-1.5 border-t border-slate-100 pt-1.5 flex justify-between items-start group/obs-btn">
-                            <span class="flex-1">{{ r._visibleObs }}</span>
-                            <button (click)="openObsModal(r)" class="text-slate-400 hover:text-slate-800 opacity-0 group-hover/obs:opacity-100 transition-opacity p-1 rounded hover:bg-slate-200 shrink-0" title="Agregar observación">
-                              <lucide-icon [name]="FileText" class="w-3.5 h-3.5"></lucide-icon>
-                            </button>
+                            <!-- Observaciones Text -->
+                            @if (r._visibleObs) {
+                              <div class="flex gap-2 p-1.5 rounded-md bg-amber-50/50 border border-amber-100/50 relative">
+                                <div class="absolute left-0 top-1 bottom-1 w-0.5 bg-amber-300 rounded-r-full"></div>
+                                <div class="flex-1 min-w-0 pl-1">
+                                  <div class="text-[10px] text-slate-600 italic whitespace-pre-line leading-relaxed">{{ r._visibleObs }}</div>
+                                </div>
+                              </div>
+                            }
                           </div>
                         </div>
                       </div>
@@ -421,7 +458,7 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
 
                   <!-- Soportes -->
                   @if (view() === 'general' || view() === 'estancias_nuevas' || view() === 'seguimiento') {
-                    <td class="px-4 py-4 first:rounded-l-lg last:rounded-r-lg text-[11px] whitespace-normal">
+                    <td class="px-5 py-4 border-b border-slate-100 whitespace-normal">
                       <div class="flex items-start justify-between gap-2 group/soportes">
                         <div class="flex-1">
                           @if (r._latestSoporte; as latest) {
@@ -449,7 +486,7 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                         </button>
                       </div>
                     </td>
-                    <td class="px-4 py-4 first:rounded-l-lg last:rounded-r-lg text-center">
+                    <td class="px-5 py-4 border-b border-slate-100 text-center">
                       <button (click)="viewingConsolidadoRecord.set(r)" class="p-1 rounded hover:bg-slate-200">
                         <lucide-icon [name]="LayoutDashboard" class="w-5 h-5 text-indigo-600"></lucide-icon>
                       </button>
@@ -457,8 +494,8 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
                   }
 
                   @if (view() === 'pgp_aic') {
-                    <td class="px-4 py-4 first:rounded-l-lg last:rounded-r-lg text-[11px] text-slate-700">{{ r['confirmacion_pgp'] || '-' }}</td>
-                    <td class="px-4 py-4 first:rounded-l-lg last:rounded-r-lg text-[11px] text-slate-600 whitespace-normal">{{ r['justificacion'] || '-' }}</td>
+                    <td class="px-5 py-4 border-b border-slate-100 text-[11px] text-slate-700">{{ r['confirmacion_pgp'] || '-' }}</td>
+                    <td class="px-5 py-4 border-b border-slate-100 text-[11px] text-slate-600 whitespace-normal">{{ r['justificacion'] || '-' }}</td>
                   }
                 </tr>
               } @empty {
@@ -476,20 +513,30 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
         </div>
         
         <!-- Pagination Controls -->
-        <div class="p-3 border-t border-slate-200 bg-white flex items-center justify-between sticky bottom-0 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-          <div class="text-xs text-slate-500">
+        <div class="px-5 py-2.5 border-t border-slate-200 bg-white flex items-center justify-between sticky bottom-0 z-20">
+          <div class="text-[11px] text-slate-500">
             Mostrando {{ paginationStart() + 1 }} a {{ paginationEnd() }} de {{ filteredRegistros().length }} registros
           </div>
-          <div class="flex items-center gap-2">
-            <select [value]="pageSize()" (change)="onPageSizeChange($event)" class="text-xs border border-slate-200 rounded px-2 py-1.5 bg-white text-slate-600 focus:outline-none focus:ring-1 focus:ring-emerald-500">
-              <option [value]="50">50 por página</option>
-              <option [value]="100">100 por página</option>
-              <option [value]="200">200 por página</option>
-              <option [value]="500">500 por página</option>
-            </select>
-            <button (click)="prevPage()" [disabled]="currentPage() === 1" class="px-3 py-1.5 border border-slate-200 rounded text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">Anterior</button>
-            <span class="text-xs font-medium text-slate-700 bg-slate-100 px-3 py-1.5 rounded">Página {{ currentPage() }} de {{ totalPages() }}</span>
-            <button (click)="nextPage()" [disabled]="currentPage() === totalPages()" class="px-3 py-1.5 border border-slate-200 rounded text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">Siguiente</button>
+          <div class="flex items-center gap-1">
+            <button (click)="prevPage()" [disabled]="currentPage() === 1" class="flex items-center justify-center w-7 h-7 rounded-md bg-slate-50 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors mr-2">
+              <lucide-icon [name]="ChevronLeft" class="w-3.5 h-3.5 text-slate-500"></lucide-icon>
+            </button>
+            @for (page of visiblePages(); track page; let i = $index) {
+              @if (page === '...') {
+                <span class="w-7 h-7 flex items-center justify-center text-[11px] text-slate-500">...</span>
+              } @else {
+                <button (click)="currentPage.set($any(page))" 
+                        [class.bg-slate-100]="currentPage() === page" 
+                        [class.text-slate-900]="currentPage() === page"
+                        [class.text-slate-500]="currentPage() !== page"
+                        class="w-7 h-7 flex items-center justify-center rounded-md text-[11px] font-medium hover:bg-slate-50 transition-colors">
+                  {{ page }}
+                </button>
+              }
+            }
+            <button (click)="nextPage()" [disabled]="currentPage() === totalPages()" class="flex items-center justify-center w-7 h-7 rounded-md bg-slate-50 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors ml-2">
+              <lucide-icon [name]="ChevronRight" class="w-3.5 h-3.5 text-slate-500"></lucide-icon>
+            </button>
           </div>
         </div>
       </div>
@@ -620,23 +667,23 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
           <div class="p-4 bg-white shrink-0 space-y-3">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div class="space-y-1">
-                <label for="tipoTramiteSelect" class="text-xs font-semibold text-slate-600 uppercase">Tipo de Trámite</label>
-                <select id="tipoTramiteSelect" #tipoTramiteSelect (change)="tramiteOption.set(tipoTramiteSelect.value)" class="w-full p-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white">
-                  <option value="">Seleccione un tipo...</option>
-                  <option value="ACTIVO">ACTIVO (Validación de Derechos)</option>
-                  <option value="Auditoría concurrente">Auditoría concurrente</option>
-                  <option value="Referencia y Contrareferencia">Referencia y Contrareferencia</option>
-                  <option [value]="'Área: ' + (editingTramiteRecord()?.['area'] || 'Sin área')">Área ({{ editingTramiteRecord()?.['area'] || 'Sin área' }})</option>
-                  <option value="Otro">Otro (Manual)</option>
-                </select>
+                <label class="text-xs font-semibold text-slate-600 uppercase">Tipo de Trámite</label>
+                <div class="grid grid-cols-1 gap-2 p-2 border border-slate-300 rounded max-h-40 overflow-y-auto bg-white">
+                  @for (option of ['ACTIVO', 'Auditoría concurrente', 'Referencia y Contrareferencia', 'Otro']; track option) {
+                     <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-slate-50 p-1 rounded">
+                       <input type="checkbox" [value]="option" (change)="toggleTramiteOption(option)" class="rounded text-emerald-600 focus:ring-emerald-500">
+                       {{ option }}
+                     </label>
+                  }
+                </div>
               </div>
               
-              <div class="space-y-1" [class.hidden]="tramiteOption() !== 'Otro'">
+              <div class="space-y-1" [class.hidden]="!tramiteOption().includes('Otro')">
                 <label for="otroTramiteInput" class="text-xs font-semibold text-slate-600 uppercase">Especificar Trámite</label>
                 <input id="otroTramiteInput" #otroTramiteInput (input)="0" class="w-full p-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="Escriba el tipo de trámite">
               </div>
 
-              <div class="space-y-1" [class.hidden]="tramiteOption() !== 'ACTIVO'">
+              <div class="space-y-1" [class.hidden]="!tramiteOption().includes('ACTIVO')">
                 <label for="autorizadorTramiteInput" class="text-xs font-semibold text-slate-600 uppercase">Autorizador</label>
                 <input id="autorizadorTramiteInput" #autorizadorTramiteInput [value]="tramiteAutorizador()" (input)="tramiteAutorizador.set(autorizadorTramiteInput.value)" class="w-full p-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="Nombre del autorizador">
               </div>
@@ -650,7 +697,7 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
 
           <div class="p-4 border-t border-slate-200 flex justify-end gap-2 bg-slate-50 shrink-0">
             <button (click)="closeTramiteModal()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200 rounded transition-colors">Cerrar</button>
-            <button (click)="saveTramite(tipoTramiteSelect.value, tramiteOption() === 'Otro' ? otroTramiteInput?.value : '', notaTramiteInput.value, tramiteAutorizador())" [disabled]="saving() || !tipoTramiteSelect.value || !notaTramiteInput.value.trim() || (tramiteOption() === 'ACTIVO' && !tramiteAutorizador().trim())" class="px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded transition-colors disabled:opacity-50 flex items-center gap-2">
+            <button (click)="saveTramite(tramiteOption().join(', '), tramiteOption().includes('Otro') ? otroTramiteInput?.value : '', notaTramiteInput.value, tramiteAutorizador())" [disabled]="saving() || !tramiteOption().length || !notaTramiteInput.value.trim() || (tramiteOption().includes('ACTIVO') && !tramiteAutorizador().trim())" class="px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded transition-colors disabled:opacity-50 flex items-center gap-2">
               @if (saving()) {
                 <mat-icon class="animate-spin w-4 h-4 text-[16px]">refresh</mat-icon>
               } @else {
@@ -1653,6 +1700,7 @@ export interface MappedConsolidadoRecord extends ConsolidadoRecord {
 })
 export class ConsolidadoListComponent {
   readonly Trash2 = Trash2;
+  readonly Ambulance = Ambulance;
   readonly PenLine = PenLine;
   readonly Check = Check;
   readonly X = X;
@@ -1662,6 +1710,7 @@ export class ConsolidadoListComponent {
   readonly FileText = FileText;
   readonly RefreshCw = RefreshCw;
   readonly AlertCircle = AlertCircle;
+  readonly MessageSquare = MessageSquare;
   readonly ChevronDown = ChevronDown;
   readonly Filter = Filter;
   readonly ArrowUpDown = ArrowUpDown;
@@ -1688,6 +1737,8 @@ export class ConsolidadoListComponent {
   readonly User = User;
   readonly Code = Code;
   readonly CheckCircle = CheckCircle;
+  readonly ChevronLeft = ChevronLeft;
+  readonly ChevronRight = ChevronRight;
 
   // EPS Searchable Dropdown
   epsSearchText = signal('');
@@ -1856,6 +1907,17 @@ export class ConsolidadoListComponent {
   editingSoportesRecord = signal<ConsolidadoRecord | null>(null);
   editingGestionRecord = signal<ConsolidadoRecord | null>(null);
   editingEntidadRecord = signal<ConsolidadoRecord | null>(null);
+  tramiteOption = signal<string[]>([]);
+  
+  toggleTramiteOption(option: string) {
+    this.tramiteOption.update(current => {
+      if (current.includes(option)) {
+        return current.filter(o => o !== option);
+      } else {
+        return [...current, option];
+      }
+    });
+  }
   editingEntidadDiasCorte = computed(() => {
     const record = this.editingEntidadRecord();
     return record ? this.calcularDiasCorte(record) : 0;
@@ -2020,7 +2082,7 @@ export class ConsolidadoListComponent {
     });
   }
 
-  private getBogotaDateOnly(): string {
+  public getBogotaDateOnly(): string {
     const now = new Date();
     const bogotaFormatter = new Intl.DateTimeFormat('en-US', {
       timeZone: 'America/Bogota',
@@ -2320,7 +2382,7 @@ export class ConsolidadoListComponent {
 
   tipoCorteSeleccionado = signal('Direccionamiento');
   otroTipoCorte = signal('');
-  tramiteOption = signal<string>('');
+
   tramiteAutorizador = signal<string>('');
   saving = signal(false);
 
@@ -2476,6 +2538,21 @@ export class ConsolidadoListComponent {
   pageSize = signal(50);
   
   totalPages = computed(() => Math.ceil(this.filteredRegistros().length / this.pageSize()) || 1);
+  
+  visiblePages = computed(() => {
+    const current = this.currentPage();
+    const total = this.totalPages();
+    if (total <= 7) {
+      return Array.from({ length: total }, (_, i) => i + 1);
+    }
+    if (current <= 4) {
+      return [1, 2, 3, 4, 5, '...', total - 1, total];
+    }
+    if (current >= total - 3) {
+      return [1, 2, '...', total - 4, total - 3, total - 2, total - 1, total];
+    }
+    return [1, '...', current - 1, current, current + 1, '...', total];
+  });
   
   paginationStart = computed(() => (this.currentPage() - 1) * this.pageSize());
   paginationEnd = computed(() => Math.min(this.paginationStart() + this.pageSize(), this.filteredRegistros().length));
@@ -2728,14 +2805,14 @@ export class ConsolidadoListComponent {
 
   openTramiteModal(record: ConsolidadoRecord) {
     this.editingTramiteRecord.set(record);
-    this.tramiteOption.set('');
+    this.tramiteOption.set([]);
     this.tramiteTab.set('activos');
     this.tramiteAutorizador.set(record.autorizador || '');
   }
 
   closeTramiteModal() {
     this.editingTramiteRecord.set(null);
-    this.tramiteOption.set('');
+    this.tramiteOption.set([]);
   }
 
   openSoportesModal(r: ConsolidadoRecord) {

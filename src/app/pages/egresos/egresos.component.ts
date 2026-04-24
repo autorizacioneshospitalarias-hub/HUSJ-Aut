@@ -444,7 +444,7 @@ interface GroupedCirugia extends Cirugia {
                                           {{ det.estado }}
                                         </span>
                                       </div>
-                                          <div class="grid grid-cols-4 gap-4 pl-5 border-t border-slate-50 pt-1.5 mt-0.5">
+                                          <div class="grid grid-cols-5 gap-4 pl-5 border-t border-slate-50 pt-1.5 mt-0.5">
                                             <div>
                                               <p class="text-[8px] text-slate-400 uppercase font-bold tracking-tighter">Cirujano</p>
                                               <p class="text-[9px] text-slate-600 truncate" [title]="det.surgeon || ''">{{ det.surgeon || 'N/A' }}</p>
@@ -462,6 +462,10 @@ interface GroupedCirugia extends Cirugia {
                                             <div>
                                               <p class="text-[8px] text-slate-400 uppercase font-bold tracking-tighter">Autorización</p>
                                               <p class="text-[9px] text-blue-600 font-bold truncate">{{ det.authorization || 'N/A' }}</p>
+                                            </div>
+                                            <div>
+                                              <p class="text-[8px] text-slate-400 uppercase font-bold tracking-tighter">Estado Aut.</p>
+                                              <p class="text-[9px] text-slate-600 font-bold truncate">{{ det.authorization || 'PENDIENTE' }}</p>
                                             </div>
                                           </div>
                                           <div class="grid grid-cols-2 gap-4 pl-5 mt-1">
@@ -539,7 +543,11 @@ interface GroupedCirugia extends Cirugia {
                                 <p class="text-[11px] font-bold text-slate-800 leading-tight">{{ nota.procedimiento || 'Procedimiento no especificado' }}</p>
                                 <p class="text-[10px] text-slate-500 mt-0.5">CUPS: <span class="font-mono">{{ nota.cups || 'N/A' }}</span></p>
                               </div>
-                              <div class="grid grid-cols-2 gap-2 text-[10px]">
+                              <div class="grid grid-cols-2 lg:grid-cols-3 gap-2 text-[10px]">
+                                <div>
+                                  <span class="text-slate-400 font-bold uppercase">Estado Aut.:</span>
+                                  <span class="text-slate-700 ml-1 font-bold">{{ nota.autorizacion || 'PENDIENTE' }}</span>
+                                </div>
                                 <div>
                                   <span class="text-slate-400 font-bold uppercase">Servicio:</span>
                                   <span class="text-slate-700 ml-1">{{ nota.servicio || 'N/A' }}</span>
@@ -588,6 +596,7 @@ interface GroupedCirugia extends Cirugia {
                             <th class="px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-24">Fecha / Qx</th>
                             <th class="px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-24">Código</th>
                             <th class="px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Descripción</th>
+                            <th class="px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-28">Estado Aut.</th>
                             <th class="px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-32 text-right">Auditoría / Estado</th>
                           </tr>
                         </thead>
@@ -623,6 +632,11 @@ interface GroupedCirugia extends Cirugia {
                                   </div>
                                 </div>
                               </td>
+                              <td class="px-5 py-3">
+                                <span class="text-[9px] font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                                  {{ item.detalles[0]?.authorization || 'PENDIENTE' }}
+                                </span>
+                              </td>
                               <td class="px-5 py-3 text-right">
                                 <div class="flex flex-col items-end gap-1">
                                   @if (item.auditLiquidation) {
@@ -639,7 +653,7 @@ interface GroupedCirugia extends Cirugia {
                             </tr>
                             @if (expandedLiquidadoIds().has(item.groupId)) {
                               <tr class="bg-slate-50/50">
-                                <td colspan="5" class="px-8 py-4">
+                                <td colspan="6" class="px-8 py-4">
                                   <div class="border-l-2 border-emerald-200 pl-4 space-y-3 max-w-6xl mx-auto">
                                     <div class="flex items-center justify-center gap-2 mb-4">
                                       <mat-icon class="text-emerald-500 text-[16px] w-4 h-4">check_circle</mat-icon>
@@ -674,7 +688,7 @@ interface GroupedCirugia extends Cirugia {
                                               </div>
                                             </div>
                                           </div>
-                                          <div class="grid grid-cols-4 gap-4 pl-7 border-t border-slate-50 pt-1.5 mt-0.5">
+                                          <div class="grid grid-cols-5 gap-4 pl-7 border-t border-slate-50 pt-1.5 mt-0.5">
                                             <div>
                                               <p class="text-[8px] text-slate-400 uppercase font-bold tracking-tighter">Cirujano</p>
                                               <p class="text-[9px] text-slate-600 truncate" [title]="det.surgeon || ''">{{ det.surgeon || 'N/A' }}</p>
@@ -692,6 +706,10 @@ interface GroupedCirugia extends Cirugia {
                                             <div>
                                               <p class="text-[8px] text-slate-400 uppercase font-bold tracking-tighter">Autorización</p>
                                               <p class="text-[9px] text-blue-600 font-bold truncate">{{ det.authorization || 'N/A' }}</p>
+                                            </div>
+                                            <div>
+                                              <p class="text-[8px] text-slate-400 uppercase font-bold tracking-tighter">Estado Aut.</p>
+                                              <p class="text-[9px] text-slate-600 font-bold truncate">{{ det.authorization || 'PENDIENTE' }}</p>
                                             </div>
                                           </div>
                                           <div class="grid grid-cols-2 gap-4 pl-7 mt-1">
@@ -716,7 +734,7 @@ interface GroupedCirugia extends Cirugia {
                           }
                           @if (liquidadoItems().cirugias.length === 0) {
                             <tr>
-                              <td colspan="5" class="px-5 py-10 text-center text-slate-400 italic text-[11px]">
+                              <td colspan="6" class="px-5 py-10 text-center text-slate-400 italic text-[11px]">
                                 No se encontraron códigos auditados para este ingreso.
                               </td>
                             </tr>

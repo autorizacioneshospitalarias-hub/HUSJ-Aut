@@ -24,20 +24,20 @@ import { NgClass } from '@angular/common';
   standalone: true,
   imports: [MatIconModule, LucideAngularModule, NgClass],
   template: `
-    <header class="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-10 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+    <header class="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-10">
       <div class="flex items-center gap-4">
-        <div class="relative group">
-          <lucide-icon [name]="SearchIcon" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></lucide-icon>
+        <div class="relative group mt-1">
+          <lucide-icon [name]="SearchIcon" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4"></lucide-icon>
           <input type="text" 
                  [value]="getSearchQuery()"
                  (input)="setSearchQuery($any($event.target).value)"
-                 placeholder="Search" 
-                 class="pl-9 pr-9 py-1.5 bg-white border border-slate-200 hover:border-slate-300 rounded-lg text-[13px] w-64 md:w-80 focus:outline-none focus:ring-0 focus:border-slate-400 transition-all text-slate-700 placeholder:text-slate-400">
+                 placeholder="Buscar..." 
+                 class="pl-10 pr-4 py-[7px] bg-white border border-slate-200 rounded-md text-[12px] w-64 md:w-80 focus:outline-none focus:ring-1 focus:ring-slate-300 transition-colors text-slate-700 placeholder:text-slate-400 shadow-none">
           
           @if (getSearchQuery()) {
             <button (click)="setSearchQuery('')" 
-                    class="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
-              <lucide-icon [name]="XIcon" class="w-3.5 h-3.5"></lucide-icon>
+                    class="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors flex items-center justify-center">
+              <lucide-icon [name]="XIcon" class="text-[16px] w-3.5 h-3.5"></lucide-icon>
             </button>
           }
         </div>
